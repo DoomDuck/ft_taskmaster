@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import config
 
 def main():
-    configuration = config.parse()
+    pass
+
 
 if __name__ == "__main__":
     main()
