@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import config
+
 def main():
-    print("Taskmaster")
+    configuration = config.parse()
 
 if __name__ == "__main__":
     main()
