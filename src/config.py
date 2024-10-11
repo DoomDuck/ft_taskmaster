@@ -1,44 +1,51 @@
-import datetime 
+import datetime
 from enum import Enum
+
 
 class RestartType(Enum):
     ALWAYS = 1
     NEVER = 2
     ONFAILURE = 3
 
+
 class Duration:
     pass
+
 
 class Signal:
     pass
 
+
 class Path(str):
     pass
+
 
 class Environment:
     pass
 
+
 class Umask:
     pass
 
+
 class Configuration:
     """
-        - Start command
-        - Number of process to start and keep alive
-        - If program is started at launch or not
-        - If program should restart
-            - always
-            - never
-            - on unexpected exits
-        - What return code are "unexpected exists"
-        - How long a program should run for to be considered "successfully started"
-        - How many restart should be attempted before aborting
-        - Which signals should be used for a gracefull shutdown
-        - How long to wait for a gracefull shutdown before killing it
-        - Optional redirections of stdout/stderr files
-        - Environment variables
-        - The working directory
-        - The umask used by the program
+    - Start command
+    - Number of process to start and keep alive
+    - If program is started at launch or not
+    - If program should restart
+        - always
+        - never
+        - on unexpected exits
+    - What return code are "unexpected exists"
+    - How long a program should run for to be considered "successfully started"
+    - How many restart should be attempted before aborting
+    - Which signals should be used for a gracefull shutdown
+    - How long to wait for a gracefull shutdown before killing it
+    - Optional redirections of stdout/stderr files
+    - Environment variables
+    - The working directory
+    - The umask used by the program
     """
 
     command: list[str]
@@ -56,5 +63,6 @@ class Configuration:
     pwd: Path
     umask: Umask
 
-def parse() -> Configuration
+
+def parse() -> Configuration:
     raise "Unimplemented"
