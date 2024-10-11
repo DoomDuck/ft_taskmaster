@@ -1,0 +1,33 @@
+programmes : 
+  programme1:
+    - name : Test
+      command: list[str]
+      process_count: int
+      start_on_launch: bool
+      restart: RestartType
+      success_exit_codes: list[int]
+      success_start_delay: datetime.timedelta
+      restart_attempts: int
+      gracefull_shutdown_signal: Signal
+      gracefull_shutdown_success_delay: datetime.timedelta
+      stdout: Path | None
+      stderr: Path | None
+      environment: Environment
+      pwd: Path
+      umask: Umask
+  programme2:
+    - name : Test2
+      command: list[str]
+      process_count: int
+      start_on_launch: bool
+      restart: RestartType
+      success_exit_codes: list[int]
+      success_start_delay: datetime.timedelta
+      restart_attempts: int
+      gracefull_shutdown_signal: Signal
+      gracefull_shutdown_success_delay: datetime.timedelta
+      stdout: Path | None
+      stderr: Path | None
+      environment: Environment
+      pwd: Path
+      umask: Umask
