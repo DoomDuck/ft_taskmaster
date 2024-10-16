@@ -1,5 +1,7 @@
-import datetime
 from enum import Enum
+from typing import Optional
+from datetime import timedelta
+from dataclasses import dataclass, field
 
 
 class RestartType(Enum):
@@ -8,27 +10,16 @@ class RestartType(Enum):
     ONFAILURE = 3
 
 
-class Duration:
-    pass
+def default_success_exit_codes() -> list[int]:
+    return [0]
 
 
 class Signal:
     pass
 
 
-class Path(str):
-    pass
-
-
-class Environment:
-    pass
-
-
-class Umask:
-    pass
-
-
-class Configuration:
+@dataclass
+class TaskDescription:
     """
     - Start command
     - Number of process to start and keep alive
@@ -48,21 +39,37 @@ class Configuration:
     - The umask used by the program
     """
 
-    command: list[str]
-    process_count: int
-    start_on_launch: bool
-    restart: RestartType
-    success_exit_codes: list[int]
-    success_start_delay: datetime.timedelta
-    restart_attempts: int
-    gracefull_shutdown_signal: Signal
-    gracefull_shutdown_success_delay: datetime.timedelta
-    stdout: Path | None
-    stderr: Path | None
-    environment: Environment
-    pwd: Path
-    umask: Umask
+    command: str
+    replicas: int = 1
+    start_on_launch: bool = True
+    restart: RestartType = RestartType.ONFAILURE
+    success_exit_codes: list[int] = \
+        field(default_factory=default_success_exit_codes)
+    success_start_delay: timedelta = timedelta(seconds=3)
+    restart_attempts: int = 3
+    # TODO(Dorian): Make the `Signal` class
+    gracefull_shutdown_signal: Optional[Signal] = None
+    gracefull_shutdown_success_delay: timedelta = timedelta(seconds=3)
+    stdout: Optional[str] = None
+    stderr: Optional[str] = None
+    environment: dict[str, str] = field(default_factory=dict)
+    pwd: Optional[str] = None
+    umask: Optional[int] = None
 
 
-def parse() -> Configuration:
-    raise "Unimplemented"
+@dataclass
+class Configuration:
+    tasks: dict[str, TaskDescription]
+
+
+def example() -> Configuration:
+    return Configuration({
+        "sleep": TaskDescription("sleep 10s"),
+        "crasher": TaskDescription("./scripts/random_crash.sh"),
+        # "hello": TaskDescription("echo hello"),
+        # "bye": TaskDescription("echo bye"),
+    })
+
+
+def parse() -> TaskDescription:
+    raise Exception("Unimplemented")
