@@ -4,14 +4,14 @@ from datetime import timedelta
 from dataclasses import dataclass, field
 
 
-class RestartType(Enum):
+class RestartCondition(Enum):
     ALWAYS = 1
     NEVER = 2
     ONFAILURE = 3
 
 
-def default_success_exit_codes() -> list[int]:
-    return [0]
+def default_success_exit_codes() -> set[int]:
+    return set([0])
 
 
 class Signal:
@@ -42,10 +42,10 @@ class TaskDescription:
     command: str
     replicas: int = 1
     start_on_launch: bool = True
-    restart: RestartType = RestartType.ONFAILURE
-    success_exit_codes: list[int] = \
+    restart: RestartCondition = RestartCondition.ONFAILURE
+    success_exit_codes: set[int] = \
         field(default_factory=default_success_exit_codes)
-    success_start_delay: timedelta = timedelta(seconds=3)
+    success_start_delay: timedelta = timedelta(seconds=1)
     restart_attempts: int = 3
     # TODO(Dorian): Make the `Signal` class
     gracefull_shutdown_signal: Optional[Signal] = None
@@ -64,8 +64,9 @@ class Configuration:
 
 def example() -> Configuration:
     return Configuration({
-        "sleep": TaskDescription("sleep 10s"),
+        "sleep": TaskDescription("sleep 3s"),
         "crasher": TaskDescription("./scripts/random_crash.sh"),
+        "unstable": TaskDescription("./scripts/unstable.sh"),
         # "hello": TaskDescription("echo hello"),
         # "bye": TaskDescription("echo bye"),
     })

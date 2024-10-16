@@ -1,10 +1,10 @@
-import asyncio
 import os
+import logging
+import asyncio
 from asyncio.subprocess import Process
 from enum import Enum
 from typing import Optional, Any
-from config import Configuration, TaskDescription
-import logging
+from config import Configuration, TaskDescription, RestartCondition
 
 
 class Status(Enum):
@@ -71,12 +71,15 @@ class Task:
             self.status = Status.RUNNING
 
     # TODO: Add gracefull stop && force stop methods
-    async def wait(self) -> Optional[int]:
+    async def wait(self) -> int:
+        """
+            Warning only call when process is running
+        """
         if self.process is None:
-            return None
+            raise Exception("Waiting for a process that is not running")
         exit_code = await self.process.wait()
+        self.status = Status.EXITED
         self.process = None
-        self.status = Status.STOPPED
         return exit_code
 
     async def start_until_success(self):
@@ -97,18 +100,31 @@ class Task:
         raise TaskStartFailure(self.description)
 
     async def run(self):
-        try:
-            await self.start_until_success()
-        except Exception as e:
-            logging.info(f"{self.name}: Could not run: {e}")
-            # TODO: open
-            pass
-
-        await self.wait()
-
-        # TODO: Maybe do better than an endless loop
         while True:
-            await asyncio.sleep(1)
+            try:
+                await self.start_until_success()
+
+                exit_code = await self.wait()
+                success_exit_codes = self.description.success_exit_codes
+                successful_exit = exit_code in success_exit_codes
+                logging.info(f"{self.name}: exited with code {exit_code} ({"success" if successful_exit else "failure"})")
+
+                match self.description.restart:
+                    case RestartCondition.ALWAYS:
+                        continue
+                    case RestartCondition.ONFAILURE if not successful_exit:
+                        continue
+
+            except Exception as e:
+                logging.info(f"{self.name}: Could not run: {e}")
+                # TODO: open
+                pass
+
+            logging.info(f"{self.name}: Finished")
+
+            # TODO: Wait for start signal
+            while True:
+                await asyncio.sleep(1)
 
 
 class TaskStartFailure(Exception):
