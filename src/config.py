@@ -1,8 +1,7 @@
 import datetime 
+import yaml
 from enum import Enum
 from dataclasses import dataclass
-import yaml
-
 from yaml.loader import SafeLoader
 
 class RestartType(Enum):
