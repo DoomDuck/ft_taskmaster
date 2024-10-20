@@ -1,33 +1,34 @@
-programmes : 
-  programme1:
-    - name : Test
-      command: list[str]
-      process_count: int
-      start_on_launch: bool
-      restart: RestartType
-      success_exit_codes: list[int]
-      success_start_delay: datetime.timedelta
-      restart_attempts: int
-      gracefull_shutdown_signal: Signal
-      gracefull_shutdown_success_delay: datetime.timedelta
-      stdout: Path | None
-      stderr: Path | None
-      environment: Environment
-      pwd: Path
-      umask: Umask
-  programme2:
-    - name : Test2
-      command: list[str]
-      process_count: int
-      start_on_launch: bool
-      restart: RestartType
-      success_exit_codes: list[int]
-      success_start_delay: datetime.timedelta
-      restart_attempts: int
-      gracefull_shutdown_signal: Signal
-      gracefull_shutdown_success_delay: datetime.timedelta
-      stdout: Path | None
-      stderr: Path | None
-      environment: Environment
-      pwd: Path
-      umask: Umask
+programs:
+  nginx:
+    command: ["nginx", "-g", "daemon off;"]
+    process_count: 1
+    start_on_launch: true
+    restart: "always"
+    success_exit_codes: [0]
+    success_start_delay: 5
+    restart_attempts: 3
+    gracefull_shutdown_signal: "SIGTERM"
+    gracefull_shutdown_success_delay: 10
+    stdout: "/var/log/nginx_stdout.log"
+    stderr: "/var/log/nginx_stderr.log"
+    env:
+      - 'TEST'
+      - 'VARIABLE'
+    pwd: "/usr/local/nginx"
+    umask: "022"
+
+  apache:
+    command: ["apache2ctl", "-D", "FOREGROUND"]
+    process_count: 1
+    start_on_launch: true
+    restart: "onfailure"
+    success_exit_codes: [0, 1]
+    success_start_delay: 10
+    restart_attempts: 5
+    gracefull_shutdown_signal: "SIGINT"
+    gracefull_shutdown_success_delay: 15
+    stdout: "/var/log/apache_stdout.log"
+    stderr: "/var/log/apache_stderr.log"
+    env: 
+    pwd: "/etc/apache2"
+    umask: "027"
