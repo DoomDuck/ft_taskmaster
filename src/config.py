@@ -1,8 +1,10 @@
 import datetime 
 import yaml
+from typing import Optional  # Pour les annotations de type
 from enum import Enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from yaml.loader import SafeLoader
+from schema import Schema, And, Use, Or,Optional as SchemaOptional, SchemaError
 
 class RestartType(Enum):
     ALWAYS = 1
@@ -23,6 +25,7 @@ class Environment(list[str]):
 
 class Umask(str):
     pass
+
 
 @dataclass
 class Configuration:
@@ -54,49 +57,86 @@ class Configuration:
     restart_attempts: int
     gracefull_shutdown_signal: Signal
     gracefull_shutdown_success_delay: datetime.timedelta
-    stdout: Path | None
-    stderr: Path | None
-    env: list[str] | None
-    pwd: Path
-    umask: Umask
+    stdout: Optional[str] = None
+    stderr: Optional[str] = None
+    environment: dict[str, str] = field(default_factory=dict)
+    pwd: Optional[str] = None
+    umask: Optional[int] = None
+
+program_schema = Schema({
+    'command': [str],
+    'process_count': And(int, lambda n: n > 0),
+    'start_on_launch': bool,
+    'restart': And(str, lambda s: s in ['always', 'onfailure']),
+    'success_exit_codes': [int],
+    'success_start_delay': And(int, lambda n: n >= 0),
+    'restart_attempts': And(int, lambda n: n >= 0),
+    'gracefull_shutdown_signal': str,
+    'gracefull_shutdown_success_delay': And(int, lambda n: n >= 0),
+    'stdout': str,
+    'stderr': str,
+    SchemaOptional('environment'): Or([str], None, []),
+    'pwd': str,
+    'umask': str
+})
+
+main_schema = Schema({
+    'programs': And(
+        {str: Schema(program_schema)},  # Validation des programmes
+        lambda d: len(d) > 0  # S'assurer qu'il y a au moins un programme
+    )
+})
 
 def parse_configuration(program_name: str, program_data: dict) -> Configuration:
     print(f"program_data: {program_data}")
     return Configuration(
         name=program_name,
-        command=program_data['command'],
-        process_count=program_data['process_count'],
-        start_on_launch=program_data['start_on_launch'],
-        restart=RestartType[program_data['restart'].upper()],
-        success_exit_codes=program_data['success_exit_codes'],
-        success_start_delay=datetime.timedelta(seconds=program_data['success_start_delay']),
-        restart_attempts=program_data['restart_attempts'],
-        gracefull_shutdown_signal=Signal(program_data['gracefull_shutdown_signal'].upper()), 
-        gracefull_shutdown_success_delay=datetime.timedelta(seconds=program_data['gracefull_shutdown_success_delay']),
-        stdout=Path(program_data['stdout']) if program_data['stdout'] else None,
-        stderr=Path(program_data['stderr']) if program_data['stderr'] else None,
-        env=program_data['env'] if program_data['env'] else None,
-        pwd=Path(program_data['pwd']),
-        umask=Umask(program_data['umask']) 
+        command=program_data.get('command', []),
+        process_count=program_data.get('process_count', 1),
+        start_on_launch=program_data.get('start_on_launch', True),
+        restart=RestartType[program_data.get('restart', 'always').upper()],
+        success_exit_codes=program_data.get('success_exit_codes', [0]),
+        success_start_delay=datetime.timedelta(seconds=program_data.get('success_start_delay', 0)),
+        restart_attempts=program_data.get('restart_attempts', 3),
+        gracefull_shutdown_signal=Signal(program_data.get('gracefull_shutdown_signal', 'SIGTERM').upper()), 
+        gracefull_shutdown_success_delay=datetime.timedelta(seconds=program_data.get('gracefull_shutdown_success_delay', 10)),
+        stdout=Path(program_data.get('stdout')) if program_data.get('stdout') else None,
+        stderr=Path(program_data.get('stderr')) if program_data.get('stderr') else None,
+        environment=program_data.get('environment', []),
+        pwd=Path(program_data.get('pwd', '/')),
+        umask=Umask(program_data.get('umask', '022'))
     )
 
-def read_and_parse_yaml(filename: str) -> list[Configuration]:
-    with open(f'{filename}.yaml', 'r') as f:
-        data = yaml.load(f, Loader=yaml.SafeLoader)
+def read_and_parse_yaml(filename: str) -> list:
+    try:
+        with open(f'{filename}.yaml', 'r') as f:
+            data = yaml.load(f, Loader=yaml.SafeLoader)
+        
+        main_schema.validate(data)
+        
+        program_list = data.get('programs', {})
+        
+
+        configurations = []
+        for program_name, program_data in program_list.items():
+            configurations.append(parse_configuration(program_name, program_data))
+        
+        return configurations
+
+    except (FileNotFoundError, IOError):
+        print(f"Erreur : Le fichier '{filename}.yaml' est introuvable ou inaccessible.")
+    except SchemaError as e:
+        print("Erreur de validation du schéma YAML:", e)
+    except ValueError as e:
+        print("Erreur de contenu YAML:", e)
+    except Exception as e:
+        print("Une erreur inattendue s'est produite:", e)
+    return []
     
-    program_list = data.get('programs')
-    
-    if not program_list:
-        raise ValueError("programs key is missing")
-    
-    configurations = []
-    
-    for program_name, program_data in program_list.items():
-        configurations.append(parse_configuration(program_name, program_data))
-    
-    return configurations
 
 configurations = read_and_parse_yaml('test')
+if not configurations:
+    print("something wrong with the configutation")
 for config in configurations:
     print(f"""
 ----- Program: {config.name}
@@ -111,7 +151,7 @@ for config in configurations:
 ------- Graceful shutdown success delay: {config.gracefull_shutdown_success_delay}
 ------- Stdout log path: {config.stdout}
 ------- Stderr log path: {config.stderr}
-------- Env: {config.env}
+------- Environment: {config.environment}
 ------- Working directory (pwd): {config.pwd}
 ------- Umask: {config.umask}
 """)
