@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 
+import asyncio
+import runner
 import config
+import logging
 
-def main():
-    configuration = config.parse()
+
+async def main():
+    # Configure root logger
+    logging.basicConfig(level=logging.INFO)
+    try:
+        await runner.TaskMaster(config.example()).run()
+    except runner.TaskStartFailure as e:
+        print(f"Error: {e}")
+
 
 if __name__ == "__main__":
-    main()
-
-
-def while True
-    
+    asyncio.run(main())

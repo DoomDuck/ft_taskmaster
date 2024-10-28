@@ -1,8 +1,8 @@
 import sys
 
-while True:
+while True
     line = sys.stdin.readline()
 
-    line = line.strip()
+line = line.strip()
 
-    print(f"Received: {line}")
+print(f"Received: {line}")
