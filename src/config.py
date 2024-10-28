@@ -3,25 +3,31 @@ import yaml
 from typing import Optional  # Pour les annotations de type
 from enum import Enum
 from dataclasses import dataclass, field
-from yaml.loader import SafeLoader
-from schema import Schema, And, Use, Or,Optional as SchemaOptional, SchemaError
+from schema import Schema, And, Or,Optional as SchemaOptional, SchemaError
+
 
 class RestartType(Enum):
+
     ALWAYS = 1
     NEVER = 2
     ONFAILURE = 3
 
+
 class Duration:
     pass
+
 
 class Signal(str):
     pass
 
+
 class Path(str):
     pass
 
+
 class Environment(list[str]):
     pass
+
 
 class Umask(str):
     pass
@@ -47,7 +53,7 @@ class Configuration:
         - The working directory
         - The umask used by the program
     """
-    name : str
+    name: str
     command: list[str]
     start_on_launch: bool
     process_count: int
@@ -62,6 +68,7 @@ class Configuration:
     environment: dict[str, str] = field(default_factory=dict)
     pwd: Optional[str] = None
     umask: Optional[int] = None
+
 
 program_schema = Schema({
     'command': [str],
@@ -87,6 +94,7 @@ main_schema = Schema({
     )
 })
 
+
 def parse_configuration(program_name: str, program_data: dict) -> Configuration:
     print(f"program_data: {program_data}")
     return Configuration(
@@ -98,7 +106,7 @@ def parse_configuration(program_name: str, program_data: dict) -> Configuration:
         success_exit_codes=program_data.get('success_exit_codes', [0]),
         success_start_delay=datetime.timedelta(seconds=program_data.get('success_start_delay', 0)),
         restart_attempts=program_data.get('restart_attempts', 3),
-        gracefull_shutdown_signal=Signal(program_data.get('gracefull_shutdown_signal', 'SIGTERM').upper()), 
+        gracefull_shutdown_signal=Signal(program_data.get('gracefull_shutdown_signal', 'SIGTERM').upper()),
         gracefull_shutdown_success_delay=datetime.timedelta(seconds=program_data.get('gracefull_shutdown_success_delay', 10)),
         stdout=Path(program_data.get('stdout')) if program_data.get('stdout') else None,
         stderr=Path(program_data.get('stderr')) if program_data.get('stderr') else None,
@@ -107,20 +115,16 @@ def parse_configuration(program_name: str, program_data: dict) -> Configuration:
         umask=Umask(program_data.get('umask', '022'))
     )
 
+
 def read_and_parse_yaml(filename: str) -> list:
     try:
         with open(f'{filename}.yaml', 'r') as f:
             data = yaml.load(f, Loader=yaml.SafeLoader)
-        
         main_schema.validate(data)
-        
         program_list = data.get('programs', {})
-        
-
         configurations = []
         for program_name, program_data in program_list.items():
-            configurations.append(parse_configuration(program_name, program_data))
-        
+            configurations.append(parse_configuration(program_name, program_data))      
         return configurations
 
     except (FileNotFoundError, IOError):
@@ -132,7 +136,7 @@ def read_and_parse_yaml(filename: str) -> list:
     except Exception as e:
         print("Une erreur inattendue s'est produite:", e)
     return []
-    
+
 
 configurations = read_and_parse_yaml('test')
 if not configurations:
