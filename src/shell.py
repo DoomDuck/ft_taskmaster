@@ -1,71 +1,81 @@
-import sys
-from schema import Schema, And, Or, Use, Optional
-import argparse
+import readline
 
-# @dataclass
-# class Command:
-#     name: str
-#     argument: str
-#     option: str
+class Colors:
+    RESET = "\033[0m"
+    RED = "\033[31m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    BLUE = "\033[34m"
+    MAGENTA = "\033[35m"
+    CYAN = "\033[36m"
+    WHITE = "\033[37m"
 
-# statusCommandSchema = Schema({
-#     'name': str,
-#     'argument': [str],
-#     'option': [str],
-# })
-
-
-# stopCommandSchema = Schema({
-
-# })
-
-# restartCommandSchema = Schema({
-
-# })
-
-
-class Command:
-    name: str
-    argument: [str]
-    option: [str]
+history_file = "taskmaster_history.txt"
+try:
+    readline.read_history_file(history_file)
+except FileNotFoundError:
+    pass 
     
+def help():
+    print("help")
+    
+def status():
+    print("Showing status...")
 
+def start_task(task):
+    print(f"Starting {task}...")
 
-startCommandSchema = Schema({
-    'name': str,
-    'task': Or("nginx", "prout"),
-    Optional('option'): [str],
-})
+def stop_task(task):
+    print(f"Stopping {task}...")
 
+def restart_task(task):
+    print(f"Restarting {task}...")
 
-def start_task(task_name):
-    print("start :", task_name)
-
-
+def reload_config():
+    print("Reloading configuration...")
+    
 command_dict = {
-    "status": start_task,
-    "start": start_task,
-    "stop": start_task,
-    "reload" : start_task
+    "start": start_task, 
+    "stop": stop_task, 
+    "restart": restart_task, 
+    "status": status, 
+    "reload": reload_config, 
+    "exit": exit, 
+    "help": help,
 }
 
-
-def check_command(command: str) -> bool:
-    if command.__len__() > 1:
-        if command[0] in command_dict:
-            print("command", command)
-            command_tmp = {}
-            command_tmp["name"] = command[0]
-            command_tmp["task"] = command[1]
-            return print("validate:", startCommandSchema.is_valid(command_tmp))
-      
-
-while True:
-    line = sys.stdin.readline()
-
-    command = line.split()
-    print(command.__len__())
-    if check_command(command):
-        command_dict[command[0]](command[1])
+def completion(text, state):
+    matches = [cmd for cmd in command_dict.keys() if cmd.startswith(text)]
+    
+    if state < len(matches):
+        return matches[state]
     else:
-        print("Command invalid")
+        return None
+    
+readline.set_completer(completion)
+readline.parse_and_bind("tab: complete") 
+
+def main_shell():
+    print("Welcome to Taskmaster Shell! Type 'help' for a list of commands.")
+    while True:
+        try:
+            command_line = input(Colors.YELLOW + "🔧 Taskmaster\n   ⤷ " + Colors.RESET).strip().lower()
+            if not command_line:
+                continue
+            
+            cmd, *args = command_line.split()
+            
+            if cmd in command_dict and args: #TODO - command without arg like exit or help
+                command_dict[cmd](args[0])
+            else:
+                print("Unknown command. Available commands: status, start, stop, restart, reload, exit.")
+        
+        except KeyboardInterrupt:
+            print("\nExiting Taskmaster.")
+            break
+        
+    readline.write_history_file(history_file)
+
+
+if __name__ == "__main__":
+    main_shell()
