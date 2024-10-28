@@ -65,7 +65,7 @@ class Configuration:
 
 
 program_schema = Schema({
-    'command': [str],
+    'command': [str], 
     'replicas': And(int, lambda n: n > 0),
     'start_on_launch': bool,
     'restart': And(str, lambda s: s in ['always', 'onfailure']),
