@@ -111,7 +111,7 @@ def parse_configuration(program_data: dict) -> TaskDescription:
 
 def read_and_parse_yaml(filename: str) -> dict:
     try:
-        with open(f'{filename}.yaml', 'r') as f:
+        with open(filename, 'r') as f:
             data = yaml.load(f, Loader=yaml.SafeLoader)
         main_schema.validate(data)
         configuration_from_yaml = data.get('programs', {})
@@ -130,11 +130,11 @@ def read_and_parse_yaml(filename: str) -> dict:
         print("Unexpected error:", e)
     return {}
 
-
-try:
-    configuration = Configuration
-    configuration.tasks = read_and_parse_yaml("test")
-    if configuration.tasks:
-        print("conf task", configuration.tasks["nginx"].stdout)
-except Exception as e:
-    print("Check your .yaml file sommething is wrong with", e.args)
+#
+# try:
+#     configuration = Configuration
+#     configuration.tasks = read_and_parse_yaml("test")
+#     if configuration.tasks:
+#         print("conf task", configuration.tasks["nginx"].stdout)
+# except Exception as e:
+#     print("Check your .yaml file sommething is wrong with", e.args)
