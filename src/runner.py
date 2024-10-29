@@ -107,7 +107,10 @@ class Task:
                 exit_code = await self.wait()
                 success_exit_codes = self.description.success_exit_codes
                 successful_exit = exit_code in success_exit_codes
-                logging.info(f"{self.name}: exited with code {exit_code} ({"success" if successful_exit else "failure"})")
+                logging.info(
+                    f"{self.name}: exited with code {exit_code}"
+                    f"({"success" if successful_exit else "failure"})"
+                )
 
                 match self.description.restart:
                     case RestartCondition.ALWAYS:

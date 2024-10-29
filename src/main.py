@@ -5,16 +5,12 @@ import runner
 import config
 import logging
 import sys
-
 import argparse
+
 
 def setup() -> config.Configuration:
     parser = argparse.ArgumentParser(
         description='sum the integers at the command line')
-
-    # parser.add_argument(
-    #     'integers', metavar='int', nargs='+', type=int,
-    #     help='an integer to be summed')
 
     parser.add_argument(
         "config_file",
@@ -31,6 +27,7 @@ def setup() -> config.Configuration:
     return config.Configuration(
         config.read_and_parse_yaml(args.config_file)
     )
+
 
 async def main():
     try:

@@ -65,7 +65,7 @@ class Configuration:
 
 
 program_schema = Schema({
-    'command': str, 
+    'command': str,
     'replicas': And(int, lambda n: n > 0),
     'start_on_launch': bool,
     # TODO: factorize condition
@@ -81,6 +81,7 @@ program_schema = Schema({
     SchemaOptional('pwd'): str,
     SchemaOptional('umask'): str
 })
+
 
 main_schema = Schema({
     'programs': And(
@@ -99,12 +100,15 @@ def parse_configuration(program_data: dict) -> TaskDescription:
         start_on_launch=program_data.get('start_on_launch', True),
         restart=RestartCondition(program_data.get('restart', 'always')),
         success_exit_codes=program_data.get('success_exit_codes', [0]),
-        success_start_delay=datetime.timedelta(seconds=program_data.get('success_start_delay', 0)),
+        success_start_delay=datetime.timedelta(
+            seconds=program_data.get('success_start_delay', 0)),
         restart_attempts=program_data.get('restart_attempts', 3),
-        gracefull_shutdown_signal=Signal(program_data.get('gracefull_shutdown_signal', 'SIGTERM').upper()),
-        gracefull_shutdown_success_delay=datetime.timedelta(seconds=program_data.get('gracefull_shutdown_success_delay', 10)),
-        stdout=program_data.get('stdout') if program_data.get('stdout') else None,
-        stderr=program_data.get('stderr') if program_data.get('stderr') else None,
+        gracefull_shutdown_signal=Signal(
+            program_data.get('gracefull_shutdown_signal', 'SIGTERM').upper()),
+        gracefull_shutdown_success_delay=datetime.timedelta(
+            seconds=program_data.get('gracefull_shutdown_success_delay', 10)),
+        stdout=program_data.get('stdout'),
+        stderr=program_data.get('stderr'),
         environment=program_data.get('environment', []),
         pwd=program_data.get('pwd', '/'),
         umask=program_data.get('umask', '0644')
@@ -131,12 +135,3 @@ def read_and_parse_yaml(filename: str) -> dict[str, TaskDescription]:
     except Exception as e:
         print("Unexpected error:", e)
     return {}
-
-#
-# try:
-#     configuration = Configuration
-#     configuration.tasks = read_and_parse_yaml("test")
-#     if configuration.tasks:
-#         print("conf task", configuration.tasks["nginx"].stdout)
-# except Exception as e:
-#     print("Check your .yaml file sommething is wrong with", e.args)
