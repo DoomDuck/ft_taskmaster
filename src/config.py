@@ -8,9 +8,9 @@ from datetime import timedelta
 
 
 class RestartCondition(Enum):
-    ALWAYS = 1
-    NEVER = 2
-    ONFAILURE = 3
+    ALWAYS = "always"
+    NEVER = "never"
+    ONFAILURE = "onfailure"
 
 
 def default_success_exit_codes() -> set[int]:
@@ -65,10 +65,11 @@ class Configuration:
 
 
 program_schema = Schema({
-    'command': [str], 
+    'command': str, 
     'replicas': And(int, lambda n: n > 0),
     'start_on_launch': bool,
-    'restart': And(str, lambda s: s in ['always', 'onfailure']),
+    # TODO: factorize condition
+    'restart': And(str, lambda s: s in ['always', 'never', 'onfailure']),
     'success_exit_codes': [int],
     'success_start_delay': And(int, lambda n: n >= 0),
     'restart_attempts': And(int, lambda n: n >= 0),
@@ -92,10 +93,11 @@ main_schema = Schema({
 def parse_configuration(program_data: dict) -> TaskDescription:
     print(f"program_data: {program_data}")
     return TaskDescription(
-        command=program_data.get('command', []),
+        # TODO Complain on missing command
+        command=program_data.get('command', ""),
         replicas=program_data.get('replicas', 1),
         start_on_launch=program_data.get('start_on_launch', True),
-        restart=program_data.get('restart', 'always').upper(),
+        restart=RestartCondition(program_data.get('restart', 'always')),
         success_exit_codes=program_data.get('success_exit_codes', [0]),
         success_start_delay=datetime.timedelta(seconds=program_data.get('success_start_delay', 0)),
         restart_attempts=program_data.get('restart_attempts', 3),
@@ -105,11 +107,11 @@ def parse_configuration(program_data: dict) -> TaskDescription:
         stderr=program_data.get('stderr') if program_data.get('stderr') else None,
         environment=program_data.get('environment', []),
         pwd=program_data.get('pwd', '/'),
-        umask=program_data.get('umask', '022')
+        umask=program_data.get('umask', '0644')
     )
 
 
-def read_and_parse_yaml(filename: str) -> dict:
+def read_and_parse_yaml(filename: str) -> dict[str, TaskDescription]:
     try:
         with open(filename, 'r') as f:
             data = yaml.load(f, Loader=yaml.SafeLoader)

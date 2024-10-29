@@ -36,7 +36,7 @@ class Task:
         self.name = name
         self.description = description
         self.status = Status.STOPPED
-        self.processes = None
+        self.process = None
 
     def make_start_arguments(self) -> dict[str, Any]:
         arguments: dict[str, Any] = {}
@@ -45,8 +45,8 @@ class Task:
             env.update(self.description.environment)
             arguments["env"] = env
 
-        if self.description.pwd is not None:
-            arguments["pwd"] = self.description.pwd
+        # if self.description.pwd is not None:
+        #     arguments["pwd"] = self.description.pwd
 
         return arguments
 

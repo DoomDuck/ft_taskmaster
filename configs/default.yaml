@@ -1,20 +1,15 @@
 programs:
-    nginx:
-        command: ["apache2ctl", "-D", "FOREGROUND"]
+    echo:
+        command: "echo Boujour"
         replicas: 1
         start_on_launch: true
+        restart_attempts: 2
         restart: "onfailure"
         success_exit_codes: [0, 1]
         success_start_delay: 10
-        restart_attempts: 5
-        gracefull_shutdown_signal: "SIGINT"
-        gracefull_shutdown_success_delay: 15
-        stdout: "/var/log/apache_stdout.log"
-        stderr: "/var/log/apache_stderr.log"
-        pwd: "/etc/apache2"
-        umask: "027"
-    apache:
-        command: ["apache2ctl", "-D", "FOREGROUND"]
+
+    sleep:
+        command: "sleep infinity"
         replicas: 1
         start_on_launch: true
         restart: "onfailure"
