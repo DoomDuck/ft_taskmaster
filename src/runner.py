@@ -141,30 +141,41 @@ class Task:
                 restarts_on_failure = (
                     self.description.restart == RestartCondition.ONFAILURE
                 )
-                if restarts_on_failure and successful_exit:
+                # TODO: fix the condition
+                if restarts_on_failure and not successful_exit:
                     continue
 
                 await self.start_until_success()
 
     async def manage_running(self) -> bool:
-        process_update = asyncio.create_task(self.wait())
-        incomming_command = asyncio.create_task(self.command_queue.get())
+        process_update = None
+        incomming_command = None
         while True:
+            # Create tasks
+            if not process_update:
+                process_update = asyncio.create_task(self.wait())
+            if not incomming_command:
+                incomming_command = asyncio.create_task(self.command_queue.get())
+
+            # Wait for at least one
             await asyncio.wait(
                 (process_update, incomming_command),
                 return_when=asyncio.FIRST_COMPLETED
             )
 
+            # Handle command
             if incomming_command.done():
                 match incomming_command.result():
                     case Command.START:
                         self.logger.info("Task already running")
                     case Command.STOP:
                         self.graceful_shutdown()
+                # Commands can get lost
                 incomming_command = (
                     asyncio.create_task(self.command_queue.get())
                 )
 
+            # Handle process update
             if process_update.done():
                 exit_code = process_update.result()
                 success_exit_codes = self.description.success_exit_codes
@@ -194,8 +205,8 @@ class TaskStartFailure(Exception):
 
 class TaskMaster:
     tasks: dict[str, Task]
-    command_queue: asyncio.Queue[Command]
     configuration: Configuration
+    command_queue: asyncio.Queue[Command]
 
     def __init__(self, configuration: Configuration):
         self.configuration = configuration

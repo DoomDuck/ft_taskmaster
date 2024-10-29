@@ -69,7 +69,7 @@ Example of what to do is [supervisor](http://supervisord.org)
 - Priviledge de-escalation at launch
 - Client/server architecture, a deamon & a control program
 - More advanced logging/reporting (alerts via email/http/syslog/etc..)
-- Allow to attach & detach a superviced process to console (like tmux & screen)
+- Allow to attach & detach a supervised process to console (like tmux & screen)
 
 ### Advices
 Try out supervisor, and when in doubt on a behaviour do as it does

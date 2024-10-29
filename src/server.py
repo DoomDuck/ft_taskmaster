@@ -27,7 +27,23 @@ def setup() -> config.Configuration:
     return config.Configuration(
         config.read_and_parse_yaml(args.config_file)
     )
+ 
 
+
+async def handle_connections():
+    async def on_connection(reader, writer):
+        print("Got net client")
+        while True:
+            line = await reader.readline()
+            if not line:
+                break
+            writer.write(line)
+            await writer.drain()
+        print("Connnection closed")
+
+    server = await asyncio.start_server(on_connection, port=4242)
+
+    await server.serve_forever()
 
 async def main():
     "Program entry point"
@@ -39,10 +55,11 @@ async def main():
 
     try:
         task_master = runner.TaskMaster(configuration)
-        await task_master.run(),
+        await task_master.run()
     except runner.TaskStartFailure as e:
         logging.error(f"could not start {e}")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(handle_connections())
+    # asyncio.run(main())
