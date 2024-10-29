@@ -1,4 +1,5 @@
 import readline
+from config import configuration
 
 class Colors:
     RESET = "\033[0m"
@@ -39,21 +40,28 @@ command_dict = {
     "stop": stop_task, 
     "restart": restart_task, 
     "status": status, 
-    "reload": reload_config, 
+    "reload": reload_config,
     "exit": exit, 
     "help": help,
 }
 
 def completion(text, state):
-    matches = [cmd for cmd in command_dict.keys() if cmd.startswith(text)]
+    buffer = readline.get_line_buffer()
+    cmd_with_args = buffer.split()
+    if len(cmd_with_args) <= 1:
+        matches = [cmd for cmd in command_dict.keys() if cmd.startswith(text)]
+    elif len(cmd_with_args) > 1:
+         matches = [arg for arg in configuration.tasks.keys() if arg.startswith(text)]
     
+    print("state, matches", state, len(matches))
     if state < len(matches):
         return matches[state]
     else:
         return None
     
+    
 readline.set_completer(completion)
-readline.parse_and_bind("tab: complete") 
+readline.parse_and_bind("tab: complete")
 
 def main_shell():
     print("Welcome to Taskmaster Shell! Type 'help' for a list of commands.")
@@ -65,11 +73,14 @@ def main_shell():
             
             cmd, *args = command_line.split()
             
-            if cmd in command_dict and args: #TODO - command without arg like exit or help
-                command_dict[cmd](args[0])
+            if cmd in command_dict:
+                if args:
+                    command_dict[cmd](args[0])
+                else:
+                    command_dict[cmd]()
             else:
                 print("Unknown command. Available commands: status, start, stop, restart, reload, exit.")
-        
+            
         except KeyboardInterrupt:
             print("\nExiting Taskmaster.")
             break
