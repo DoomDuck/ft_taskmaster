@@ -35,6 +35,19 @@ def restart_task(task):
 def reload_config():
     print("Reloading configuration...")
     
+class Command: pass
+
+class GlobalCommand: pass
+
+class ReloadCommand(GlobalCommand): pass
+
+@dataclasse
+class TaskCommand(Command):
+    task_name: str
+
+class StartCommand(TaskCommand):pass
+class StopCommand(TaskCommand):pass
+
 command_dict = {
     "start": start_task, 
     "stop": stop_task, 
