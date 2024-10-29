@@ -30,6 +30,7 @@ def setup() -> config.Configuration:
 
 
 async def main():
+    "Program entry point"
     try:
         configuration = setup()
     except Exception as e:
@@ -37,10 +38,10 @@ async def main():
         sys.exit(1)
 
     try:
-        await runner.TaskMaster(configuration).run()
-        pass
+        task_master = runner.TaskMaster(configuration)
+        await task_master.run(),
     except runner.TaskStartFailure as e:
-        print(f"Error: {e}")
+        logging.error(f"could not start {e}")
 
 
 if __name__ == "__main__":

@@ -66,15 +66,17 @@ class Configuration:
 
 program_schema = Schema({
     'command': str,
-    'replicas': And(int, lambda n: n > 0),
-    'start_on_launch': bool,
+    SchemaOptional('replicas'): And(int, lambda n: n > 0),
+    SchemaOptional('start_on_launch'): bool,
     # TODO: factorize condition
-    'restart': And(str, lambda s: s in ['always', 'never', 'onfailure']),
-    'success_exit_codes': [int],
-    'success_start_delay': And(int, lambda n: n >= 0),
-    'restart_attempts': And(int, lambda n: n >= 0),
-    'gracefull_shutdown_signal': str,
-    'gracefull_shutdown_success_delay': And(int, lambda n: n >= 0),
+    SchemaOptional('restart'):
+        And(str, lambda s: s in ['always', 'never', 'onfailure']),
+    SchemaOptional('success_exit_codes'): [int],
+    SchemaOptional('success_start_delay'): And(int, lambda n: n >= 0),
+    SchemaOptional('restart_attempts'): And(int, lambda n: n >= 0),
+    SchemaOptional('gracefull_shutdown_signal'): str,
+    SchemaOptional('gracefull_shutdown_success_delay'):
+        And(int, lambda n: n >= 0),
     SchemaOptional('stdout'): str,
     SchemaOptional('stderr'): str,
     SchemaOptional('environment'): Or([str], None, []),
@@ -92,7 +94,6 @@ main_schema = Schema({
 
 
 def parse_configuration(program_data: dict) -> TaskDescription:
-    print(f"program_data: {program_data}")
     return TaskDescription(
         # TODO Complain on missing command
         command=program_data.get('command', ""),
