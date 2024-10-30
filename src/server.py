@@ -27,7 +27,6 @@ def setup() -> config.Configuration:
     return config.Configuration(
         config.read_and_parse_yaml(args.config_file)
     )
- 
 
 
 async def handle_connections():
@@ -44,6 +43,7 @@ async def handle_connections():
     server = await asyncio.start_server(on_connection, port=4242)
 
     await server.serve_forever()
+
 
 async def main():
     "Program entry point"
