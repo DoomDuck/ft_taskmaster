@@ -25,64 +25,47 @@ except FileNotFoundError:
     pass
 
 
-def help():
-    print("help")
-
-
-def status():
-    print("Showing status...")
-
-
-def start_task(task):
-    print(f"Starting {task}...")
-
-
-def stop_task(task):
-    print(f"Stopping {task}...")
-
-
-def restart_task(task):
-    print(f"Restarting {task}...")
-
-
-def reload_config():
-    print("Reloading configuration...")
-
-
+@dataclass
 class Command:
-    pass
+    def __init__(self, name, arg):
+        self.name = name
+        self.arg = arg
 
-
-class GlobalCommand:
-    pass
-
-
-class ReloadCommand(GlobalCommand):
-    pass
+    def toJSON(self):
+        return json.dumps(
+            self,
+            default=lambda o: o.__dict__,
+            indent=4)
 
 
 @dataclass
-class TaskCommand(Command):
-    task_name: str
+class Request:
+    def __init__(self, type: str, command: Command, name: str = None, ):
+        self.type = type
+        self.name = name if name is not None else command.name
+        self.command = command
+    
+    def toJSON(self):
+        return json.dumps(
+            self,
+            default=lambda o: o.__dict__,
+            sort_keys=True,
+            indent=4)
 
 
-class StartCommand(TaskCommand):
+class Response:
     pass
 
 
-class StopCommand(TaskCommand):
-    pass
-
-
-command_dict = {
-    "start": start_task,
-    "stop": stop_task,
-    "restart": restart_task,
-    "status": status,
-    "reload": reload_config,
-    "exit": exit,
-    "help": help,
-}
+commands = [
+    "start",
+    "stop",
+    "restart",
+    "status",
+    "reload",
+    "exit",
+    "help",
+]
 
 
 class Connection:
@@ -93,8 +76,9 @@ class Connection:
         self.sock = sock
         self.buffer = bytes()
 
-    def send(self, message: str):
-        self.sock.sendall(f"{message}\n".encode())
+    def send(self, request: Request):
+        
+        self.sock.sendall(f"{request.toJSON()}\n".encode())
 
     def receive(self) -> str:
         while True:
@@ -115,21 +99,22 @@ class CompletionEngine:
         self.connection = connection
 
     def get_matches(self, prefix: str):
-        self.connection.send("get process")
-        reponse = self.connection.receive()
+        self.connection.send("getprocess")
+
+        reponse = self.connection.receive("hello")
 
         names = reponse.split()
         return [s for s in names if s.startswith(prefix)]
 
     def __call__(self, text: str, state):
         buffer = readline.get_line_buffer()
-        cmd_with_args = buffer.split()
-        if len(cmd_with_args) <= 1:
+        cmd, *cmd_with_args = buffer.split()
+        if not cmd_with_args:
             matches = [
-                cmd for cmd in command_dict.keys()
+                cmd for cmd in commands
                 if cmd.startswith(text)
             ]
-        elif len(cmd_with_args) > 1:
+        elif cmd_with_args:
             matches = self.get_matches(text)
 
         if state < len(matches):
@@ -161,14 +146,11 @@ def run(connection: Connection):
 
             cmd, *args = command_line.split()
 
-            if True:
-                connection.send(command_line)
+            if cmd in commands:
+                command = Command(cmd, args)
+                request = Request("exec", command)
+                connection.send(request)
 
-            # if cmd in command_dict:
-            #     if args:
-            #         command_dict[cmd](args[0])
-            #     else:
-            #         command_dict[cmd]()
             else:
                 print(
                     "Unknown command\n."
