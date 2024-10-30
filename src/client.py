@@ -25,7 +25,6 @@ except FileNotFoundError:
     pass
 
 
-@dataclass
 class Command:
     def __init__(self, name, arg):
         self.name = name
@@ -38,7 +37,6 @@ class Command:
             indent=4)
 
 
-@dataclass
 class Request:
     def __init__(self, type: str, command: Command, name: str = None, ):
         self.type = type
