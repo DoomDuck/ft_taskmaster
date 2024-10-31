@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import readline
-import socket
 import json
+import socket
 from dataclasses import dataclass
+from communication import Request, Command, Connection
+from schema import Schema, And, Or, In, Optional as SchemaOptional, SchemaError
 
 
 class Colors:
@@ -25,35 +27,21 @@ except FileNotFoundError:
     pass
 
 
-class Command:
-    def __init__(self, name, arg):
-        self.name = name
-        self.arg = arg
+def get_process(value):
+    valeurs_autorisees = get_matches# Remplace par ta liste
+    if value not in valeurs_autorisees:
+        raise ValueError(f"La valeur '{value}' n'est pas autorisée.")
+    return value
 
-    def toJSON(self):
-        return json.dumps(
-            self,
-            default=lambda o: o.__dict__,
-            indent=4)
+def get_matches(self, prefix: str):
+        print("tets")
+        self.connection.send(Request("get", Command("getProcess")).toJSON)
+        response = sef.connection.receive(),
+        names = reponse.split()
+        return [s for s in names if s.startswith(prefix)]
 
-
-class Request:
-    def __init__(self, type: str, command: Command, name: str = None, ):
-        self.type = type
-        self.name = name if name is not None else command.name
-        self.command = command
-    
-    def toJSON(self):
-        return json.dumps(
-            self,
-            default=lambda o: o.__dict__,
-            sort_keys=True,
-            indent=4)
-
-
-class Response:
-    pass
-
+class Commands:
+    list : [Command]
 
 commands = [
     "start",
@@ -61,34 +49,20 @@ commands = [
     "restart",
     "status",
     "reload",
-    "exit",
-    "help",
 ]
 
 
-class Connection:
-    sock: socket.socket
-    buffer: bytes
 
-    def __init__(self, sock: socket.socket):
-        self.sock = sock
-        self.buffer = bytes()
-
-    def send(self, request: Request):
+exec_command_schema = Schema([
+    {
         
-        self.sock.sendall(f"{request.toJSON()}\n".encode())
+    }
+])
 
-    def receive(self) -> str:
-        while True:
-            index = self.buffer.find(b'\n')
-            if index != -1:
-                break
-            self.sock.recv_into(self.buffer)
-        message = self.buffer[:index]
-        print(f"Got message: {message}")
-        self.buffer = self.buffer[index+1:]
-        return message.decode()
 
+args_schema = Schema({
+    "<process>" : And(str, lambda n : n < 1)
+})
 
 class CompletionEngine:
     connection: Connection
@@ -97,10 +71,9 @@ class CompletionEngine:
         self.connection = connection
 
     def get_matches(self, prefix: str):
-        self.connection.send("getprocess")
-
-        reponse = self.connection.receive("hello")
-
+        print("tets")
+        self.connection.send(Request("get", Command("getProcess")).toJSON)
+        response = sef.connection.receive(),
         names = reponse.split()
         return [s for s in names if s.startswith(prefix)]
 
@@ -113,6 +86,7 @@ class CompletionEngine:
                 if cmd.startswith(text)
             ]
         elif cmd_with_args:
+            match 
             matches = self.get_matches(text)
 
         if state < len(matches):
@@ -145,6 +119,11 @@ def run(connection: Connection):
             cmd, *args = command_line.split()
 
             if cmd in commands:
+                if len(args) > 2:
+                   print(
+                    "unexpected argument\n.",
+                    "Available argument: "
+                ) 
                 command = Command(cmd, args)
                 request = Request("exec", command)
                 connection.send(request)
@@ -152,8 +131,8 @@ def run(connection: Connection):
             else:
                 print(
                     "Unknown command\n."
-                    "Available commands: "
-                    "status, start, stop, restart, reload, exit."
+                    "Available commands: ",
+                    commands
                 )
 
         except KeyboardInterrupt:
@@ -171,7 +150,6 @@ def main():
     connection = Connection(connection)
 
     run(connection)
-
 
 if __name__ == "__main__":
     main()
