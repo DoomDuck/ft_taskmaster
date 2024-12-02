@@ -70,7 +70,6 @@ class CompletionEngine:
                 if cmd.startswith(text)
             ]
         elif cmd_with_args:
-            match 
             matches = self.get_matches(text)
 
         if state < len(matches):
