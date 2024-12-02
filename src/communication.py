@@ -18,7 +18,6 @@ class Request:
     def __init__(self, type: str, command: Command):
         self.type = type
         self.command = command
-    
     def toJSON(self):
         return json.dumps(
             self,
@@ -26,8 +25,9 @@ class Request:
             indent=4)
 
 class Response:
-    pass
-
+    def __init__(self, status: str, message: str):
+        self.status = status
+        self.message = message
 
 class Connection:
     sock: socket.socket
