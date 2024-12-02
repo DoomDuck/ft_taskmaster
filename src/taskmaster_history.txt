@@ -1,8 +1,0 @@
-ls
-d
-te
-test
-start fds
-start nginx
-ddsf
-f
