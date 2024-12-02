@@ -16,7 +16,7 @@ class Colors:
     WHITE = "\033[37m"
 
 
-history_file = "taskmaster_history.txt"
+history_file = "taskmaster_history.log"
 
 
 try:
