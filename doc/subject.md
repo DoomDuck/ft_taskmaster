@@ -69,7 +69,7 @@ Example of what to do is [supervisor](http://supervisord.org)
 - Priviledge de-escalation at launch
 - Client/server architecture, a deamon & a control program
 - More advanced logging/reporting (alerts via email/http/syslog/etc..)
-- Allow to attach & detach a superviced process to console (like tmux & screen)
+- Allow to attach & detach a supervised process to console (like tmux & screen)
 
 ### Advices
 Try out supervisor, and when in doubt on a behaviour do as it does
@@ -78,37 +78,36 @@ Try out supervisor, and when in doubt on a behaviour do as it does
 
 ```yaml
 programs:
-nginx:
-cmd: "/usr/local/bin/nginx -c /etc/nginx/test.conf"
-numprocs: 1
-umask: 022
-workingdir: /tmp
-autostart: true
-autorestart: unexpected
-exitcodes:
-- 0
-- 2
-startretries: 3
-starttime: 5
-stopsignal: TERM
-stoptime: 10
-stdout: /tmp/nginx.stdout
-stderr: /tmp/nginx.stderr
-env:
-STARTED_BY: taskmaster
-ANSWER: 42
+    nginx:
+    cmd: "/usr/local/bin/nginx -c /etc/nginx/test.conf"
+    numprocs: 1
+    umask: 022
+    workingdir: /tmp
+    autostart: true
+    autorestart: unexpected
+    exitcodes:
+        - 0
+        - 2
+    startretries: 3
+    starttime: 5
+    stopsignal: TERM
+    stoptime: 10
+    stdout: /tmp/nginx.stdout
+    stderr: /tmp/nginx.stderr
+    env:
+
 vogsphere:
-cmd: "/usr/local/bin/vogsphere-worker --no-prefork"
-numprocs: 8
-umask: 077
-workingdir: /tmp
-autostart: true
-autorestart: unexpected
-exitcodes: 0
-startretries: 3
-starttime: 5
-stopsignal: USR1
-stoptime: 10
-stdout: /tmp/vgsworker.stdout
-stderr: /tmp/vgsworker.stderr
+    cmd: "/usr/local/bin/vogsphere-worker --no-prefork"
+    numprocs: 8
+    umask: 077
+    workingdir: /tmp
+    autostart: true
+    autorestart: unexpected
+    exitcodes: 0
+    startretries: 3
+    starttime: 5
+    stopsignal: USR1
+    stoptime: 10
+    stdout: /tmp/vgsworker.stdout
+    stderr: /tmp/vgsworker.stderr
 ```

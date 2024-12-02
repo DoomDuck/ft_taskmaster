@@ -1,7 +1,7 @@
-import asyncio
+#!/usr/bin/env python3
+
+import socket
 import readline
-from config import Configuration
-import sys
 from dataclasses import dataclass
 
 
@@ -85,27 +85,52 @@ command_dict = {
 }
 
 
-class CompletionEngine:
-    configuration: Configuration
+class Connection:
+    sock: socket.socket
+    buffer: bytes
 
-    def __init__(self, configuration: Configuration):
-        self.configuration = configuration
+    def __init__(self, sock: socket.socket):
+        self.sock = sock
+        self.buffer = bytes()
+
+    def send(self, message: str):
+        self.sock.sendall(f"{message}\n".encode())
+
+    def receive(self) -> str:
+        while True:
+            index = self.buffer.find(b'\n')
+            if index != -1:
+                break
+            self.sock.recv_into(self.buffer)
+        message = self.buffer[:index]
+        print(f"Got message: {message}")
+        self.buffer = self.buffer[index+1:]
+        return message.decode()
+
+
+class CompletionEngine:
+    connection: Connection
+
+    def __init__(self, connection: Connection):
+        self.connection = connection
+
+    def get_matches(self, prefix: str):
+        self.connection.send("get process")
+        reponse = self.connection.receive()
+
+        names = reponse.split()
+        return [s for s in names if s.startswith(prefix)]
 
     def __call__(self, text: str, state):
         buffer = readline.get_line_buffer()
         cmd_with_args = buffer.split()
         if len(cmd_with_args) <= 1:
             matches = [
-                cmd
-                for cmd in command_dict.keys()
+                cmd for cmd in command_dict.keys()
                 if cmd.startswith(text)
             ]
         elif len(cmd_with_args) > 1:
-            matches = [
-                arg
-                for arg in self.configuration.tasks.keys()
-                if arg.startswith(text)
-            ]
+            matches = self.get_matches(text)
 
         if state < len(matches):
             return matches[state]
@@ -113,42 +138,18 @@ class CompletionEngine:
             return None
 
 
-async def connect_stdin_stdout(
-        ) -> (asyncio.StreamReader, asyncio.StreamWriter):
-    loop = asyncio.get_event_loop()
-    reader = asyncio.StreamReader()
-    protocol = asyncio.StreamReaderProtocol(reader)
-    await loop.connect_read_pipe(lambda: protocol, sys.stdin)
-    w_transport, w_protocol = await loop.connect_write_pipe(
-            asyncio.streams.FlowControlMixin, sys.stdout)
-    writer = asyncio.StreamWriter(w_transport, w_protocol, reader, loop)
-    return reader, writer
-
-
-def setup(configuration: Configuration):
-    completion_engine = CompletionEngine(configuration)
+def setup(connection: Connection):
+    completion_engine = CompletionEngine(connection)
 
     readline.set_completer(completion_engine)
     readline.parse_and_bind("tab: complete")
 
 
-async def run(configuration: Configuration):
-    setup(configuration)
-    # reader, writer = await connect_stdin_stdout()
+def run(connection: Connection):
+    setup(connection)
 
-    # writer.write(b"Welcome to Taskmaster Shell!
-    # Type 'help' for a list of commands.")
     while True:
-        # writer.write((
-        #     Colors.YELLOW +
-        #     "🔧 Taskmaster\n   ⤷ " +
-        #     Colors.RESET
-        # ).encode())
-        # await writer.drain()
         try:
-            # command_line = (await reader.read()).strip().lower()
-            # TODO: make async
-            # command_line = sys.stdin.readline()
             command_line = input(
                 Colors.YELLOW +
                 "🔧 Taskmaster\n   ⤷ " +
@@ -160,28 +161,37 @@ async def run(configuration: Configuration):
 
             cmd, *args = command_line.split()
 
-            if cmd in command_dict:
-                if args:
-                    command_dict[cmd](args[0])
-                else:
-                    command_dict[cmd]()
+            if True:
+                connection.send(command_line)
+
+            # if cmd in command_dict:
+            #     if args:
+            #         command_dict[cmd](args[0])
+            #     else:
+            #         command_dict[cmd]()
             else:
                 print(
                     "Unknown command\n."
                     "Available commands: "
                     "status, start, stop, restart, reload, exit."
                 )
-                # writer.write(
-                #     "Unknown command\n."
-                #     "Available commands: "
-                #     "status, start, stop, restart, reload, exit."
-                # )
-                # await writer.drain()
 
         except KeyboardInterrupt:
             print("\nExiting Taskmaster.")
-            # writer.write("\nExiting Taskmaster.")
-            # await writer.drain()
             break
 
     readline.write_history_file(history_file)
+
+
+MAX_COMMAND_SIZE = 4096
+
+
+def main():
+    connection = socket.create_connection(("localhost", 4242))
+    connection = Connection(connection)
+
+    run(connection)
+
+
+if __name__ == "__main__":
+    main()
