@@ -35,11 +35,8 @@ class Task:
     status: Status
     description: TaskDescription
     process: Optional[Process]
-    # TODO: remove int type
     command_queue: asyncio.Queue[Command]
     logger: logging.Logger
-
-    # TODO: Add logger
 
     def __init__(self, name: str, description: TaskDescription):
         self.name = name
@@ -93,22 +90,22 @@ class Task:
         self.process = None
         return exit_code
 
-    async def start_until_success(self):
+    async def try_successive_starts(self):
         self.logger.info("Starting task")
-        for i in range(self.description.restart_attempts):
-            self.logger.info(f"Start number {i + 1}")
+        for attempt_number in range(self.description.restart_attempts):
+            self.logger.info(f"Start number {attempt_number + 1}")
             try:
                 return await self.start()
             except TaskStartFailure:
                 # TODO: log error
+                self.logger.info("Task did not run long enough")
                 continue
             except Exception as e:
-                self.logger.info(f"Error starting process {e}")
+                self.logger.error(f"Starting process: {e}")
                 self.status = Status.FATAL
                 return
-        self.logger.info("Could not start process")
+        self.logger.warning("Could not start process")
         self.status = Status.BACKOFF
-        raise TaskStartFailure(self.description)
 
     async def graceful_shutdown(self):
         self.logger.info("Shutting down")
@@ -127,10 +124,7 @@ class Task:
         """Manage the execution of this task"""
 
         if self.description.start_on_launch:
-            try:
-                await self.start_until_success()
-            except Exception:
-                self.logger.info("Could not start")
+            await self.try_successive_starts()
 
         while True:
             if self.process is None:
@@ -145,7 +139,7 @@ class Task:
                 if restarts_on_failure and not successful_exit:
                     continue
 
-                await self.start_until_success()
+                await self.try_successive_starts()
 
     async def manage_running(self) -> bool:
         process_update = None
@@ -155,7 +149,9 @@ class Task:
             if not process_update:
                 process_update = asyncio.create_task(self.wait())
             if not incomming_command:
-                incomming_command = asyncio.create_task(self.command_queue.get())
+                incomming_command = (
+                    asyncio.create_task(self.command_queue.get())
+                )
 
             # Wait for at least one
             await asyncio.wait(
@@ -180,9 +176,10 @@ class Task:
                 exit_code = process_update.result()
                 success_exit_codes = self.description.success_exit_codes
                 successful_exit = exit_code in success_exit_codes
+                status_message = "success" if successful_exit else "failure"
                 self.logger.info((
                     f"exited with code {exit_code} "
-                    f"({"success" if successful_exit else "failure"})"
+                    f"({status_message})"
                 ))
                 return successful_exit
 
@@ -206,33 +203,19 @@ class TaskStartFailure(Exception):
 class TaskMaster:
     tasks: dict[str, Task]
     configuration: Configuration
-    command_queue: asyncio.Queue[Command]
 
     def __init__(self, configuration: Configuration):
-        self.configuration = configuration
         self.tasks = {}
-
-    async def run_command(self, command):
-        pass
-
-    async def queue_command(self, command):
-        pass
+        self.configuration = configuration
 
     async def run(self):
         logging.info("Starting taskmaster")
-        self.tasks = {
-            name: Task(name, description)
-            for name, description in self.configuration.tasks.items()
-        }
         try:
-            # TODO: Use a `TaskGroup`
-            await asyncio.gather(*[
-                task.manage()
-                for task in self.tasks.values()
-            ])
-        except asyncio.CancelledError as e:
+            async with asyncio.TaskGroup() as tg:
+                for name, desc in self.configuration.tasks.items():
+                    task = Task(name, desc)
+                    self.tasks[name] = task
+                    tg.create_task(task.manage())
+        finally:
             # TODO: graceful shutdown
-            logging.info(f"Stopping {e}...")
-        except KeyboardInterrupt as e:
-            # TODO: graceful shutdown
-            logging.info(f"Stopping {e}...")
+            logging.info("Stopping...")

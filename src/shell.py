@@ -134,7 +134,8 @@ async def run(configuration: Configuration):
     setup(configuration)
     # reader, writer = await connect_stdin_stdout()
 
-    # writer.write(b"Welcome to Taskmaster Shell! Type 'help' for a list of commands.")
+    # writer.write(b"Welcome to Taskmaster Shell!
+    # Type 'help' for a list of commands.")
     while True:
         # writer.write((
         #     Colors.YELLOW +

@@ -64,6 +64,12 @@ class Configuration:
     tasks: dict[str, TaskDescription]
 
 
+def load(filename: str) -> Configuration:
+    return Configuration(
+        read_and_parse_yaml(filename)
+    )
+
+
 program_schema = Schema({
     'command': str,
     SchemaOptional('replicas'): And(int, lambda n: n > 0),

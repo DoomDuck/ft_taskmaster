@@ -47,6 +47,7 @@ commands = [
     "reload",
 ]
 
+
 class CompletionEngine:
     connection: Connection
 
