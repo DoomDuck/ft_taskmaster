@@ -113,9 +113,8 @@ class CompletionEngine:
             return None
 
 
-
-
-async def connect_stdin_stdout() -> (asyncio.StreamReader, asyncio.StreamWriter):
+async def connect_stdin_stdout(
+        ) -> (asyncio.StreamReader, asyncio.StreamWriter):
     loop = asyncio.get_event_loop()
     reader = asyncio.StreamReader()
     protocol = asyncio.StreamReaderProtocol(reader)
@@ -137,7 +136,8 @@ async def run(configuration: Configuration):
     setup(configuration)
     # reader, writer = await connect_stdin_stdout()
 
-    # writer.write(b"Welcome to Taskmaster Shell! Type 'help' for a list of commands.")
+    # writer.write(b"Welcome to Taskmaster Shell!
+    # Type 'help' for a list of commands.")
     while True:
         # writer.write((
         #     Colors.YELLOW +

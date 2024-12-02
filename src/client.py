@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
-import asyncio
-import readline
-from config import Configuration
-import sys
-from dataclasses import dataclass
 import socket
+import readline
+from dataclasses import dataclass
 
 
 class Colors:
@@ -110,6 +107,7 @@ class Connection:
         self.buffer = self.buffer[index+1:]
         return message.decode()
 
+
 class CompletionEngine:
     connection: Connection
 
@@ -121,8 +119,7 @@ class CompletionEngine:
         reponse = self.connection.receive()
 
         names = reponse.split()
-        return [s for s in names if s.startswith(text)]
-
+        return [s for s in names if s.startswith(prefix)]
 
     def __call__(self, text: str, state):
         buffer = readline.get_line_buffer()
@@ -185,7 +182,9 @@ def run(connection: Connection):
 
     readline.write_history_file(history_file)
 
-MAX_COMMAND_SIZE=4096
+
+MAX_COMMAND_SIZE = 4096
+
 
 def main():
     connection = socket.create_connection(("localhost", 4242))

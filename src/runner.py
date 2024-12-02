@@ -149,7 +149,9 @@ class Task:
             if not process_update:
                 process_update = asyncio.create_task(self.wait())
             if not incomming_command:
-                incomming_command = asyncio.create_task(self.command_queue.get())
+                incomming_command = (
+                    asyncio.create_task(self.command_queue.get())
+                )
 
             # Wait for at least one
             await asyncio.wait(
@@ -210,9 +212,9 @@ class TaskMaster:
         try:
             async with asyncio.TaskGroup() as tg:
                 for name, desc in self.configuration.tasks.items():
-                    task = Task(name, desc) 
+                    task = Task(name, desc)
                     self.tasks[name] = task
                     tg.create_task(task.manage())
         finally:
             # TODO: graceful shutdown
-            logging.info(f"Stopping...")
+            logging.info("Stopping...")

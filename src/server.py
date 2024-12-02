@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
 
-import sys
-import signal
 import asyncio
 import logging
 
 import config
 
-from typing import Optional, AsyncGenerator, Generator
 from argparse import ArgumentParser, Namespace
-from runner import TaskMaster, TaskStartFailure
-from config import Configuration
+from runner import TaskMaster
 from asyncio import StreamReader, StreamWriter
-from asyncio.events import AbstractServer
-
 
 cla = ArgumentParser(
     description='sum the integers at the command line')
@@ -40,7 +34,8 @@ class Server:
             task = asyncio.create_task(connection.handle())
             self.connection_tasks.append(task)
 
-        async with await asyncio.start_server(on_connection, port=4242) as server:
+        start_server_task = asyncio.start_server(on_connection, port=4242)
+        async with await start_server_task as server:
             try:
                 # TODO: see why I cannot use server.serve_forever()
                 await server.start_serving()
@@ -56,7 +51,12 @@ class Connection:
     reader: StreamReader
     writer: StreamWriter
 
-    def __init__(self, server: Server, reader: StreamReader, writer: StreamWriter):
+    def __init__(
+            self,
+            server: Server,
+            reader: StreamReader,
+            writer: StreamWriter
+            ):
         self.server = server
         self.reader = reader
         self.writer = writer
@@ -97,8 +97,8 @@ async def start(arguments: Namespace):
     server = Server(task_master)
 
     async with asyncio.TaskGroup() as tg:
-        task_master_task = tg.create_task(task_master.run())
-        serve_task = tg.create_task(server.serve())
+        tg.create_task(task_master.run())
+        tg.create_task(server.serve())
 
 
 if __name__ == "__main__":
