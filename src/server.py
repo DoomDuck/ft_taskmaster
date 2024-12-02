@@ -104,9 +104,13 @@ async def start(arguments: Namespace):
     task_master = TaskMaster(configuration)
     server = Server(task_master)
 
-    async with asyncio.TaskGroup() as tg:
-        tg.create_task(task_master.run())
-        tg.create_task(server.serve())
+    try:
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(task_master.run())
+            tg.create_task(server.serve())
+    except ExceptionGroup as exception_group:
+        for exception in exception_group.exceptions:
+            logging.error(exception)
 
 
 if __name__ == "__main__":
