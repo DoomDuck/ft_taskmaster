@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import readline
+import platform
 import socket
 from communication import Request, Command, Connection
 
@@ -55,6 +56,7 @@ class CompletionEngine:
         self.connection = connection
 
     def get_matches(self, prefix: str):
+        console.log("test")
         self.connection.send(Request("get", Command("getProcess", "test")).toJSON)
         response = self.connection.receive(),
         names = response.split()
@@ -78,10 +80,16 @@ class CompletionEngine:
 
 
 def setup(connection: Connection):
-    completion_engine = CompletionEngine(connection)
+    try:
+        completion_engine = CompletionEngine(connection)
 
-    readline.set_completer(completion_engine)
-    readline.parse_and_bind("tab: complete")
+        readline.set_completer(completion_engine)
+        if platform.system() == "Darwin":
+            readline.parse_and_bind("bind ^I rl_complete") # on MacOS 🥶
+        else:
+            readline.parse_and_bind("tab: complete")
+    except Exception as e:
+        print(f"Could not setup readline: {e}")
 
 
 def run(connection: Connection):
@@ -128,10 +136,12 @@ MAX_COMMAND_SIZE = 4096
 
 def main():
     "client main"
-    connection = socket.create_connection(("localhost", 4242))
-    connection = Connection(connection)
+    try:
+        connection = socket.create_connection(("localhost", 4242))
+        connection = Connection(connection)
 
-    run(connection)
-
+        run(connection)
+    except Exception as e:
+        print(f"Could not connect to server: {e}")
 if __name__ == "__main__":
     main()
