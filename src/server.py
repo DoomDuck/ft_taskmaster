@@ -66,11 +66,8 @@ class Connection:
             async for line in self.reader:
                 self.writer.write(line)
                 await self.writer.drain()
-        except asyncio.CancelledError:
-            # Connection task doesn't stop if connection is not closed
-            print("Closing connection")
+        finally:
             self.writer.close()
-            raise
 
 
 def main():
