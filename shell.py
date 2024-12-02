@@ -1,8 +1,8 @@
+import sys
 import asyncio
 import readline
-from config import Configuration
-import sys
 from dataclasses import dataclass
+from config import Configuration
 
 
 class Colors:
@@ -112,9 +112,13 @@ class CompletionEngine:
         else:
             return None
 
+<<<<<<< HEAD:src/shell.py
 
 async def connect_stdin_stdout(
         ) -> (asyncio.StreamReader, asyncio.StreamWriter):
+=======
+async def connect_stdin_stdout() -> (asyncio.StreamReader, asyncio.StreamWriter):
+>>>>>>> 9d0efbc (cleaning):shell.py
     loop = asyncio.get_event_loop()
     reader = asyncio.StreamReader()
     protocol = asyncio.StreamReaderProtocol(reader)

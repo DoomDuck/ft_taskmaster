@@ -36,34 +36,8 @@ class Connection:
     def __init__(self, sock: socket.socket):
         self.sock = sock
         self.buffer = bytes()
-        
 
     def send(self, request: Request):
-        
-        self.sock.sendall(f"{request.toJSON()}\n".encode())
-
-    def receive(self) -> str:
-        while True:
-            index = self.buffer.find(b'\n')
-            if index != -1:
-                break
-            self.sock.recv_into(self.buffer)
-        message = self.buffer[:index]
-        print(f"Got message: {message}")
-        self.buffer = self.buffer[index+1:]
-        return message.decode()
-
-
-class Connection:
-    sock: socket.socket
-    buffer: bytes
-
-    def __init__(self, sock: socket.socket):
-        self.sock = sock
-        self.buffer = bytes()
-
-    def send(self, request: Request):
-        
         self.sock.sendall(f"{request.toJSON()}\n".encode())
 
     def receive(self) -> str:
