@@ -19,6 +19,14 @@ cla.add_argument(
     default="./configs/default.yaml",
 )
 
+cla.add_argument(
+    "-l",
+    "--log-file",
+    type=str,
+    help="Log file",
+    default=None
+)
+
 
 class Server:
     task_master: TaskMaster
@@ -82,7 +90,10 @@ def main():
 
 
 async def start(arguments: Namespace):
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        filename=arguments.log_file,
+        level=logging.INFO,
+    )
 
     try:
         configuration = config.load(arguments.config_file)
