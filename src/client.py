@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 import readline
-import json
 import socket
-from dataclasses import dataclass
 from communication import Request, Command, Connection
-from schema import Schema, And, Or, In, Optional as SchemaOptional, SchemaError
-
 
 class Colors:
     RESET = "\033[0m"
@@ -18,27 +14,27 @@ class Colors:
     WHITE = "\033[37m"
 
 
-history_file = "taskmaster_history.txt"
+HISTORY_FILE = ".taskmaster_history"
 
 
 try:
-    readline.read_history_file(history_file)
+    readline.read_history_file(HISTORY_FILE)
 except FileNotFoundError:
     pass
 
 
 def get_process(value):
-    valeurs_autorisees = get_matches# Remplace par ta liste
-    if value not in valeurs_autorisees:
-        raise ValueError(f"La valeur '{value}' n'est pas autorisée.")
+    authorized_values = get_matches
+    if value not in authorized_values:
+        raise ValueError(f"'{value}' is not authorized")
     return value
 
 def get_matches(self, prefix: str):
-        print("tets")
-        self.connection.send(Request("get", Command("getProcess")).toJSON)
-        response = sef.connection.receive(),
-        names = reponse.split()
-        return [s for s in names if s.startswith(prefix)]
+    print("tets")
+    self.connection.send(Request("get", Command("getProcess", "test")).toJSON)
+    response = self.connection.receive(),
+    names = response.split()
+    return [s for s in names if s.startswith(prefix)]
 
 class Commands:
     list : [Command]
@@ -51,19 +47,6 @@ commands = [
     "reload",
 ]
 
-
-
-exec_command_schema = Schema([
-    {
-        
-    }
-])
-
-
-args_schema = Schema({
-    "<process>" : And(str, lambda n : n < 1)
-})
-
 class CompletionEngine:
     connection: Connection
 
@@ -71,10 +54,9 @@ class CompletionEngine:
         self.connection = connection
 
     def get_matches(self, prefix: str):
-        print("tets")
-        self.connection.send(Request("get", Command("getProcess")).toJSON)
-        response = sef.connection.receive(),
-        names = reponse.split()
+        self.connection.send(Request("get", Command("getProcess", "test")).toJSON)
+        response = self.connection.receive(),
+        names = response.split()
         return [s for s in names if s.startswith(prefix)]
 
     def __call__(self, text: str, state):
@@ -120,10 +102,9 @@ def run(connection: Connection):
 
             if cmd in commands:
                 if len(args) > 2:
-                   print(
+                    print(
                     "unexpected argument\n.",
-                    "Available argument: "
-                ) 
+                    "Available argument: ") 
                 command = Command(cmd, args)
                 request = Request("exec", command)
                 connection.send(request)
@@ -139,13 +120,14 @@ def run(connection: Connection):
             print("\nExiting Taskmaster.")
             break
 
-    readline.write_history_file(history_file)
+    readline.write_history_file(HISTORY_FILE)
 
 
 MAX_COMMAND_SIZE = 4096
 
 
 def main():
+    "client main"
     connection = socket.create_connection(("localhost", 4242))
     connection = Connection(connection)
 

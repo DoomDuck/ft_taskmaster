@@ -1,8 +1,8 @@
+import sys
 import asyncio
 import readline
-from config import Configuration
-import sys
 from dataclasses import dataclass
+from config import Configuration
 
 
 class Colors:
@@ -111,9 +111,6 @@ class CompletionEngine:
             return matches[state]
         else:
             return None
-
-
-
 
 async def connect_stdin_stdout() -> (asyncio.StreamReader, asyncio.StreamWriter):
     loop = asyncio.get_event_loop()
