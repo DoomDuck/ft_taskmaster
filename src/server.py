@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import asyncio
 import logging
 
@@ -25,6 +26,13 @@ cla.add_argument(
     type=str,
     help="Log file",
     default=None
+)
+
+cla.add_argument(
+    "--allow-root",
+    action="store_true",
+    help="Log file",
+    default=False,
 )
 
 
@@ -83,17 +91,32 @@ def main():
 
     arguments = cla.parse_args()
 
-    try:
-        asyncio.run(start(arguments))
-    except KeyboardInterrupt:
-        pass
-
-
-async def start(arguments: Namespace):
     logging.basicConfig(
         filename=arguments.log_file,
         level=logging.INFO,
     )
+
+    try:
+        asyncio.run(start(arguments))
+    except KeyboardInterrupt:
+        pass
+    except Exception as exception:
+        logging.error(f"Error starting: {exception}")
+
+
+def raise_exception_if_root_user():
+    "Check if user is root."
+    if os.geteuid() == 0:
+        raise Exception("""
+            Taskmaster being run as root /!\\
+            To allow use the `--allow-root` flag
+        """)
+
+async def start(arguments: Namespace):
+
+    # Forbid use from being root
+    if not arguments.allow_root:
+        raise_exception_if_root_user()
 
     try:
         configuration = config.load(arguments.config_file)
