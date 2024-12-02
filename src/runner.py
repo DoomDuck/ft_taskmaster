@@ -176,9 +176,10 @@ class Task:
                 exit_code = process_update.result()
                 success_exit_codes = self.description.success_exit_codes
                 successful_exit = exit_code in success_exit_codes
+                status_message = "success" if successful_exit else "failure"
                 self.logger.info((
                     f"exited with code {exit_code} "
-                    f"({"success" if successful_exit else "failure"})"
+                    f"({status_message})"
                 ))
                 return successful_exit
 
