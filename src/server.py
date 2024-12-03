@@ -89,10 +89,23 @@ class Connection:
     #         raise
     async def handleJson(self):
         try:
-            async for line in self.reader:
+            data = await self.reader.read(1024) # readuntil(separator), readexactly(n) 
+            if not data:
+                print("Le client a fermé la connexion.")
+                return
 
-                # Write response
-                self.writer.write(line)
+            message = data.decode()
+            print(f"Données brutes reçues : {message}")
+            try:
+                json_data = json.loads(message)
+                print(f"JSON décodé : {json_data}")
+
+                response = {"status": "success", "received": json_data}
+                self.writer.write(json.dumps(response).encode() + b'\n')
+                await self.writer.drain()
+            except json.JSONDecodeError:
+                print("Erreur de décodage JSON.")
+                self.writer.write(b'{"error": "Invalid JSON"}\n')
                 await self.writer.drain()
         finally:
             self.writer.close()
