@@ -3,7 +3,7 @@
 import os
 import asyncio
 import logging
-
+import json
 import config
 
 from argparse import ArgumentParser, Namespace
@@ -47,7 +47,7 @@ class Server:
     async def serve(self):
         async def on_connection(reader: StreamReader, writer: StreamWriter):
             connection = Connection(self, reader, writer)
-            task = asyncio.create_task(connection.handle())
+            task = asyncio.create_task(connection.handleJson())
             self.connection_tasks.append(task)
 
         start_server_task = asyncio.start_server(on_connection, port=4242)
@@ -77,14 +77,25 @@ class Connection:
         self.reader = reader
         self.writer = writer
 
-    async def handle(self):
+    # async def handle(self):
+    #     try:
+    #         async for line in self.reader:
+    #             self.writer.write(line)
+    #             await self.writer.drain()
+    #     except asyncio.CancelledError:
+    #         # Connection task doesn't stop if connection is not closed
+    #         print("Closing connection")
+    #         self.writer.close()
+    #         raise
+    async def handleJson(self):
         try:
             async for line in self.reader:
+
+                # Write response
                 self.writer.write(line)
                 await self.writer.drain()
         finally:
             self.writer.close()
-
 
 def main():
     "Program entry point"

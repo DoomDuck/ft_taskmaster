@@ -115,6 +115,8 @@ def run(connection: Connection):
                 command = Command(cmd, args)
                 request = Request("exec", command)
                 connection.send(request)
+                response = connection.receive()
+                print(response.data)
 
             else:
                 print(
@@ -138,7 +140,6 @@ def main():
     try:
         connection = socket.create_connection(("localhost", 4242))
         connection = Connection(connection)
-
         run(connection)
     except Exception as e:
         print(f"Could not connect to server: {e}")

@@ -25,9 +25,12 @@ class Request:
             indent=4)
 
 class Response:
-    def __init__(self, status: str, message: str):
+    def __init__(self, status: str, data: bytes):
         self.status = status
-        self.message = message
+        self.data = data
+
+    def to_dict(self):
+        return json.loads(self.data)
 
 class Connection:
     sock: socket.socket
@@ -35,18 +38,15 @@ class Connection:
 
     def __init__(self, sock: socket.socket):
         self.sock = sock
-        self.buffer = bytes()
+        self.buffer = b''
 
-    def send(self, request: Request):
-        self.sock.sendall(f"{request.toJSON()}\n".encode())
+    def send(self, request):
+        print("Sending request:", request.command.name)
+        data = request.toJSON()
+        self.sock.sendall(bytes(data,encoding="utf-8"))
 
-    def receive(self) -> str:
-        while True:
-            index = self.buffer.find(b'\n')
-            if index != -1:
-                break
-            self.sock.recv_into(self.buffer)
-        message = self.buffer[:index]
-        print(f"Got message: {message}")
-        self.buffer = self.buffer[index+1:]
-        return message.decode()
+    def receive(self) -> Response:
+        data = self.sock.recv(1024)
+        return Response("success", data.decode("utf-8"))
+
+  
