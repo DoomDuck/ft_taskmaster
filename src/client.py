@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import socket
 import readline
+import platform
 from dataclasses import dataclass
 from communication import Request, Command, Connection
 
@@ -55,7 +56,6 @@ class CompletionEngine:
         self.connection = connection
 
     def get_matches(self, prefix: str):
-        console.log("test")
         self.connection.send(Request("get", Command("getProcess", "test")).toJSON)
         response = self.connection.receive(),
         names = response.split()
