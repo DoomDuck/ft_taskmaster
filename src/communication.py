@@ -10,19 +10,17 @@ class Command:
     def toJSON(self):
         return json.dumps(
             self,
-            default=lambda o: o.__dict__,
-            indent=4)
+            default=lambda o: o.__dict__)
 
 
 class Request:
     def __init__(self, type: str, command: Command):
         self.type = type
         self.command = command
-    def toJSON(self):
+    def to_json(self):
         return json.dumps(
             self,
-            default=lambda o: o.__dict__,
-            indent=4)
+            default=lambda o: o.__dict__)
 
 class Response:
     def __init__(self, status: str, data: bytes):
@@ -34,19 +32,29 @@ class Response:
 
 class Connection:
     sock: socket.socket
-    buffer: bytes
+    buffer: bytearray
 
     def __init__(self, sock: socket.socket):
         self.sock = sock
-        self.buffer = b''
+        self.buffer = bytearray()
 
-    def send(self, request):
-        print("Sending request:", request.command.name)
-        data = request.toJSON()
-        self.sock.sendall(bytes(data,encoding="utf-8"))
+    def send(self, request: Request):
+        data = request.to_json().encode() + b'\n'
+        self.sock.sendall(data)
 
     def receive(self) -> Response:
-        data = self.sock.recv(1024)
-        return Response("success", data.decode("utf-8"))
+        while True:
+            index = self.buffer.find(b'\n')
+            if index != -1:
+                break
+            data = self.sock.recv(0x1000)
+            if len(data) == 0:
+                raise Exception("End of stream")
+            self.buffer.extend(data)
+            
 
-  
+        message = self.buffer[:index]
+        print(f"Got message: {message}")
+        del self.buffer[:index + 1]
+        response = Response("success", message.decode())
+        return response

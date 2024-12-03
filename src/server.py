@@ -47,7 +47,7 @@ class Server:
     async def serve(self):
         async def on_connection(reader: StreamReader, writer: StreamWriter):
             connection = Connection(self, reader, writer)
-            task = asyncio.create_task(connection.handleJson())
+            task = asyncio.create_task(connection.handle())
             self.connection_tasks.append(task)
 
         start_server_task = asyncio.start_server(on_connection, port=4242)
@@ -77,35 +77,10 @@ class Connection:
         self.reader = reader
         self.writer = writer
 
-    # async def handle(self):
-    #     try:
-    #         async for line in self.reader:
-    #             self.writer.write(line)
-    #             await self.writer.drain()
-    #     except asyncio.CancelledError:
-    #         # Connection task doesn't stop if connection is not closed
-    #         print("Closing connection")
-    #         self.writer.close()
-    #         raise
-    async def handleJson(self):
+    async def handle(self):
         try:
-            data = await self.reader.read(1024) # readuntil(separator), readexactly(n) 
-            if not data:
-                print("Le client a fermé la connexion.")
-                return
-
-            message = data.decode()
-            print(f"Données brutes reçues : {message}")
-            try:
-                json_data = json.loads(message)
-                print(f"JSON décodé : {json_data}")
-
-                response = {"status": "success", "received": json_data}
-                self.writer.write(json.dumps(response).encode() + b'\n')
-                await self.writer.drain()
-            except json.JSONDecodeError:
-                print("Erreur de décodage JSON.")
-                self.writer.write(b'{"error": "Invalid JSON"}\n')
+            async for line in self.reader:
+                self.writer.write(line)
                 await self.writer.drain()
         finally:
             self.writer.close()
