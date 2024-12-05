@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-
 import socket
 import readline
+import platform
 from dataclasses import dataclass
-
+from communication import Request, Command, Connection
 
 class Colors:
     RESET = "\033[0m"
@@ -16,97 +16,38 @@ class Colors:
     WHITE = "\033[37m"
 
 
-history_file = "taskmaster_history.log"
+HISTORY_FILE = "taskmaster_history.log"
 
 
 try:
-    readline.read_history_file(history_file)
+    readline.read_history_file(HISTORY_FILE)
 except FileNotFoundError:
     pass
 
 
-def help():
-    print("help")
+def get_process(value):
+    authorized_values = get_matches
+    if value not in authorized_values:
+        raise ValueError(f"'{value}' is not authorized")
+    return value
 
+def get_matches(self, prefix: str):
+    print("tets")
+    self.connection.send(Request("get", Command("getProcess", "test")).toJSON)
+    response = self.connection.receive(),
+    names = response.split()
+    return [s for s in names if s.startswith(prefix)]
 
-def status():
-    print("Showing status...")
+class Commands:
+    list : [Command]
 
-
-def start_task(task):
-    print(f"Starting {task}...")
-
-
-def stop_task(task):
-    print(f"Stopping {task}...")
-
-
-def restart_task(task):
-    print(f"Restarting {task}...")
-
-
-def reload_config():
-    print("Reloading configuration...")
-
-
-class Command:
-    pass
-
-
-class GlobalCommand:
-    pass
-
-
-class ReloadCommand(GlobalCommand):
-    pass
-
-
-@dataclass
-class TaskCommand(Command):
-    task_name: str
-
-
-class StartCommand(TaskCommand):
-    pass
-
-
-class StopCommand(TaskCommand):
-    pass
-
-
-command_dict = {
-    "start": start_task,
-    "stop": stop_task,
-    "restart": restart_task,
-    "status": status,
-    "reload": reload_config,
-    "exit": exit,
-    "help": help,
-}
-
-
-class Connection:
-    sock: socket.socket
-    buffer: bytes
-
-    def __init__(self, sock: socket.socket):
-        self.sock = sock
-        self.buffer = bytes()
-
-    def send(self, message: str):
-        self.sock.sendall(f"{message}\n".encode())
-
-    def receive(self) -> str:
-        while True:
-            index = self.buffer.find(b'\n')
-            if index != -1:
-                break
-            self.sock.recv_into(self.buffer)
-        message = self.buffer[:index]
-        print(f"Got message: {message}")
-        self.buffer = self.buffer[index+1:]
-        return message.decode()
-
+commands = [
+    "start",
+    "stop",
+    "restart",
+    "status",
+    "reload",
+]
 
 class CompletionEngine:
     connection: Connection
@@ -115,21 +56,20 @@ class CompletionEngine:
         self.connection = connection
 
     def get_matches(self, prefix: str):
-        self.connection.send("get process")
-        reponse = self.connection.receive()
-
-        names = reponse.split()
+        self.connection.send(Request("get", Command("getProcess", "test")).toJSON)
+        response = self.connection.receive(),
+        names = response.split()
         return [s for s in names if s.startswith(prefix)]
 
     def __call__(self, text: str, state):
         buffer = readline.get_line_buffer()
-        cmd_with_args = buffer.split()
-        if len(cmd_with_args) <= 1:
+        cmd, *cmd_with_args = buffer.split()
+        if not cmd_with_args:
             matches = [
-                cmd for cmd in command_dict.keys()
+                cmd for cmd in commands
                 if cmd.startswith(text)
             ]
-        elif len(cmd_with_args) > 1:
+        elif cmd_with_args:
             matches = self.get_matches(text)
 
         if state < len(matches):
@@ -139,10 +79,16 @@ class CompletionEngine:
 
 
 def setup(connection: Connection):
-    completion_engine = CompletionEngine(connection)
+    try:
+        completion_engine = CompletionEngine(connection)
 
-    readline.set_completer(completion_engine)
-    readline.parse_and_bind("tab: complete")
+        readline.set_completer(completion_engine)
+        if platform.system() == "Darwin":
+            readline.parse_and_bind("bind ^I rl_complete") # on MacOS 🥶
+        else:
+            readline.parse_and_bind("tab: complete")
+    except Exception as e:
+        print(f"Could not setup readline: {e}")
 
 
 def run(connection: Connection):
@@ -161,37 +107,41 @@ def run(connection: Connection):
 
             cmd, *args = command_line.split()
 
-            if True:
-                connection.send(command_line)
+            if cmd in commands:
+                if len(args) > 2:
+                    print(
+                    "unexpected argument\n.",
+                    "Available argument: ") 
+                command = Command(cmd, args)
+                request = Request("exec", command)
+                connection.send(request)
+                response = connection.receive()
+                print(response.data)
 
-            # if cmd in command_dict:
-            #     if args:
-            #         command_dict[cmd](args[0])
-            #     else:
-            #         command_dict[cmd]()
             else:
                 print(
                     "Unknown command\n."
-                    "Available commands: "
-                    "status, start, stop, restart, reload, exit."
+                    "Available commands: ",
+                    commands
                 )
 
         except KeyboardInterrupt:
             print("\nExiting Taskmaster.")
             break
 
-    readline.write_history_file(history_file)
+    readline.write_history_file(HISTORY_FILE)
 
 
 MAX_COMMAND_SIZE = 4096
 
 
 def main():
-    connection = socket.create_connection(("localhost", 4242))
-    connection = Connection(connection)
-
-    run(connection)
-
-
+    "client main"
+    try:
+        connection = socket.create_connection(("localhost", 4242))
+        connection = Connection(connection)
+        run(connection)
+    except Exception as e:
+        print(f"Could not connect to server: {e}")
 if __name__ == "__main__":
     main()

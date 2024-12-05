@@ -3,7 +3,7 @@
 import os
 import asyncio
 import logging
-
+import json
 import config
 
 from argparse import ArgumentParser, Namespace
@@ -84,7 +84,6 @@ class Connection:
                 await self.writer.drain()
         finally:
             self.writer.close()
-
 
 def main():
     "Program entry point"
