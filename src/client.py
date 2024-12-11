@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import socket
+
+import rpc
 import readline
 import platform
-from dataclasses import dataclass
-from communication import Request, Command, Connection
+
 
 class Colors:
     RESET = "\033[0m"
@@ -25,22 +25,6 @@ except FileNotFoundError:
     pass
 
 
-def get_process(value):
-    authorized_values = get_matches
-    if value not in authorized_values:
-        raise ValueError(f"'{value}' is not authorized")
-    return value
-
-def get_matches(self, prefix: str):
-    print("tets")
-    self.connection.send(Request("get", Command("getProcess", "test")).toJSON)
-    response = self.connection.receive(),
-    names = response.split()
-    return [s for s in names if s.startswith(prefix)]
-
-class Commands:
-    list : [Command]
-
 commands = [
     "start",
     "stop",
@@ -49,17 +33,19 @@ commands = [
     "reload",
 ]
 
-class CompletionEngine:
-    connection: Connection
 
-    def __init__(self, connection: Connection):
-        self.connection = connection
+class CompletionEngine:
+    client: rpc.Client
+
+    def __init__(self, client: rpc.Client):
+        self.client = client
 
     def get_matches(self, prefix: str):
-        self.connection.send(Request("get", Command("getProcess", "test")).toJSON)
-        response = self.connection.receive(),
-        names = response.split()
-        return [s for s in names if s.startswith(prefix)]
+        return [
+            task_name
+            for task_name in self.client.list()
+            if task_name.startswith(prefix)
+        ]
 
     def __call__(self, text: str, state):
         buffer = readline.get_line_buffer()
@@ -78,21 +64,20 @@ class CompletionEngine:
             return None
 
 
-def setup(connection: Connection):
+def setup(client: rpc.Client):
     try:
-        completion_engine = CompletionEngine(connection)
-
+        completion_engine = CompletionEngine(client)
         readline.set_completer(completion_engine)
         if platform.system() == "Darwin":
-            readline.parse_and_bind("bind ^I rl_complete") # on MacOS 🥶
+            readline.parse_and_bind("bind ^I rl_complete")  # on MacOS 🥶
         else:
             readline.parse_and_bind("tab: complete")
     except Exception as e:
         print(f"Could not setup readline: {e}")
 
 
-def run(connection: Connection):
-    setup(connection)
+def run(client: rpc.Client):
+    setup(client)
 
     while True:
         try:
@@ -105,25 +90,24 @@ def run(connection: Connection):
             if not command_line:
                 continue
 
-            cmd, *args = command_line.split()
-
-            if cmd in commands:
-                if len(args) > 2:
-                    print(
-                    "unexpected argument\n.",
-                    "Available argument: ") 
-                command = Command(cmd, args)
-                request = Request("exec", command)
-                connection.send(request)
-                response = connection.receive()
-                print(response.data)
-
-            else:
-                print(
-                    "Unknown command\n."
-                    "Available commands: ",
-                    commands
-                )
+            try:
+                match command_line.split():
+                    case ["start", task]:
+                        client.start(task)
+                    case ["stop", task]:
+                        client.stop(task)
+                    case ["restart", task]:
+                        client.restart(task)
+                    case ["reload"]:
+                        client.reload()
+                    case ["shutdown"]:
+                        client.shutdown()
+                    case ["quit"]:
+                        break
+                    case _:
+                        print("Invalid command:", command_line)
+            except Exception as e:
+                print(f"Error running command: {e}")
 
         except KeyboardInterrupt:
             print("\nExiting Taskmaster.")
@@ -132,16 +116,14 @@ def run(connection: Connection):
     readline.write_history_file(HISTORY_FILE)
 
 
-MAX_COMMAND_SIZE = 4096
-
-
 def main():
     "client main"
     try:
-        connection = socket.create_connection(("localhost", 4242))
-        connection = Connection(connection)
-        run(connection)
+        with rpc.Client() as client:
+            run(client)
     except Exception as e:
         print(f"Could not connect to server: {e}")
+
+
 if __name__ == "__main__":
     main()

@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package TaskMaster;
+
+import public "google/protobuf/empty.proto";
+
+service Runner {
+  rpc start(TaskName) returns (google.protobuf.Empty);
+  rpc stop(TaskName) returns (google.protobuf.Empty);
+  rpc restart(TaskName) returns (google.protobuf.Empty);
+  rpc reload(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc shutdown(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc list(google.protobuf.Empty) returns (stream TaskName);
+}
+
+message TaskName {
+  string name = 1;
+}
+
