@@ -30,6 +30,7 @@ class Response:
     def to_dict(self):
         return json.loads(self.data)
 
+
 class Connection:
     sock: socket.socket
     buffer: bytearray

@@ -1,0 +1,5 @@
+--proto_path=proto/
+--python_out=src/
+--pyi_out=src/
+--grpc_python_out=src/
+proto/rpc/command.proto
