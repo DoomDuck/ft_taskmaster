@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
 import rpc
-import socket
 import readline
 import platform
-from dataclasses import dataclass
-from communication import Request, Command, Connection
+
 
 class Colors:
     RESET = "\033[0m"
@@ -27,22 +25,6 @@ except FileNotFoundError:
     pass
 
 
-def get_process(value):
-    authorized_values = get_matches
-    if value not in authorized_values:
-        raise ValueError(f"'{value}' is not authorized")
-    return value
-
-def get_matches(self, prefix: str):
-    print("tets")
-    self.connection.send(Request("get", Command("getProcess", "test")).toJSON)
-    response = self.connection.receive(),
-    names = response.split()
-    return [s for s in names if s.startswith(prefix)]
-
-class Commands:
-    list : [Command]
-
 commands = [
     "start",
     "stop",
@@ -50,6 +32,7 @@ commands = [
     "status",
     "reload",
 ]
+
 
 class CompletionEngine:
     client: rpc.Client
@@ -61,7 +44,7 @@ class CompletionEngine:
         return [
             task_name
             for task_name in self.client.list()
-            if s.startswith(prefix)
+            if task_name.startswith(prefix)
         ]
 
     def __call__(self, text: str, state):
@@ -86,7 +69,7 @@ def setup(client: rpc.Client):
         completion_engine = CompletionEngine(client)
         readline.set_completer(completion_engine)
         if platform.system() == "Darwin":
-            readline.parse_and_bind("bind ^I rl_complete") # on MacOS 🥶
+            readline.parse_and_bind("bind ^I rl_complete")  # on MacOS 🥶
         else:
             readline.parse_and_bind("tab: complete")
     except Exception as e:
@@ -111,17 +94,17 @@ def run(client: rpc.Client):
                 match command_line.split():
                     case ["start", task]:
                         client.start(task)
-                    case ["stop", task]: 
+                    case ["stop", task]:
                         client.stop(task)
-                    case ["restart", task]: 
+                    case ["restart", task]:
                         client.restart(task)
-                    case ["reload"]: 
+                    case ["reload"]:
                         client.reload()
-                    case ["shutdown"]: 
+                    case ["shutdown"]:
                         client.shutdown()
                     case ["quit"]:
                         break
-                    case invalid:
+                    case _:
                         print("Invalid command:", command_line)
             except Exception as e:
                 print(f"Error running command: {e}")
@@ -140,6 +123,7 @@ def main():
             run(client)
     except Exception as e:
         print(f"Could not connect to server: {e}")
+
 
 if __name__ == "__main__":
     main()

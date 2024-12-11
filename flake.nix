@@ -12,11 +12,15 @@
       buildInputs = [
         (pkgs.python3.withPackages (p: with p; [
           pyyaml
+          types-pyyaml
+
           pytest
           flake8
           mypy
           schema
+
           grpcio-tools
+          types-protobuf
         ]))
       ];
     };

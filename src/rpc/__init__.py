@@ -1,14 +1,13 @@
 import grpc
 
-from rpc import command_pb2
 from rpc import command_pb2_grpc
 
-from typing import List, Generator
+from typing import List, AsyncGenerator
 from runner import TaskMaster
 from rpc.command_pb2 import TaskName, Empty
 from rpc.command_pb2_grpc import RunnerStub, RunnerServicer
 
-DEFAULT_PORT : int = 50051
+DEFAULT_PORT: int = 50051
 
 
 class Client:
@@ -55,7 +54,7 @@ class TaskMasterRunner(RunnerServicer):
     async def start(self, task_name: TaskName, _context) -> Empty:
         try:
             await self.task_master.tasks[task_name.name].start()
-        except:
+        except Exception:
             # TODO(Dorian): Handle Exception
             pass
         return Empty()
@@ -63,7 +62,7 @@ class TaskMasterRunner(RunnerServicer):
     async def stop(self, task_name: TaskName, _context) -> Empty:
         try:
             await self.task_master.tasks[task_name.name].graceful_shutdown()
-        except:
+        except Exception:
             # TODO(Dorian): Handle Exception
             pass
         return Empty()
@@ -72,13 +71,13 @@ class TaskMasterRunner(RunnerServicer):
         try:
             await self.task_master.tasks[task_name.name].graceful_shutdown()
             await self.task_master.tasks[task_name.name].start()
-        except:
+        except Exception:
             # TODO(Dorian): Handle Exception
             pass
         return Empty()
 
     # TODO(Dorian): Add return type
-    async def list(self, _arg: Empty, _context) -> Generator[TaskName]:
+    async def list(self, _arg: Empty, _context) -> AsyncGenerator[TaskName, None]:
         for name in self.task_master.tasks:
             yield TaskName(name=name)
 

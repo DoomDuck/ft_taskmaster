@@ -3,13 +3,13 @@
 import os
 import asyncio
 import logging
-import json
 import config
 
 import rpc
 from echo_server import EchoServer
 from argparse import ArgumentParser, Namespace
 from runner import TaskMaster
+
 
 cla = ArgumentParser(
     description='sum the integers at the command line')
@@ -70,6 +70,7 @@ def raise_exception_if_root_user():
             Taskmaster being run as root /!\\
             To allow use the `--allow-root` flag
         """)
+
 
 async def start(arguments: Namespace):
 

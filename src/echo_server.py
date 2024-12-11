@@ -3,6 +3,7 @@ import asyncio
 from runner import TaskMaster
 from asyncio import StreamReader, StreamWriter
 
+
 class EchoServer:
     task_master: TaskMaster
     connection_tasks: list[asyncio.Task]
