@@ -8,7 +8,7 @@
     pkgs = nixpkgs.legacyPackages.${system};
   in {
     devShells.${system}.default = pkgs.mkShell {
-      name = "grpc";
+      name = "taskmaster";
       buildInputs = [
         (pkgs.python3.withPackages (p: with p; [
           pyyaml

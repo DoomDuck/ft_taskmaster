@@ -1,5 +1,8 @@
 import grpc
 
+import runner
+import asyncio
+
 from rpc import command_pb2_grpc
 
 from typing import List, AsyncGenerator
@@ -42,6 +45,7 @@ class Client:
         return self
 
     def __exit__(self, type, value, traceback):
+        # TODO: remove
         self.channel.close()
 
 
@@ -53,25 +57,38 @@ class TaskMasterRunner(RunnerServicer):
 
     async def start(self, task_name: TaskName, _context) -> Empty:
         try:
-            await self.task_master.tasks[task_name.name].start()
+            task = self.task_master.tasks[task_name.name]
+            task.command_queue.put_nowait(runner.Command.START)
         except Exception:
+            # TODO(Dorian): Handle Exception
+            pass
+        except asyncio.QueueFull:
             # TODO(Dorian): Handle Exception
             pass
         return Empty()
 
     async def stop(self, task_name: TaskName, _context) -> Empty:
         try:
-            await self.task_master.tasks[task_name.name].graceful_shutdown()
+            task = self.task_master.tasks[task_name.name]
+            task.command_queue.put_nowait(runner.Command.STOP)
         except Exception:
+            # TODO(Dorian): Handle Exception
+            pass
+        except asyncio.QueueFull:
             # TODO(Dorian): Handle Exception
             pass
         return Empty()
 
     async def restart(self, task_name: TaskName, _context) -> Empty:
         try:
-            await self.task_master.tasks[task_name.name].graceful_shutdown()
-            await self.task_master.tasks[task_name.name].start()
+            task = self.task_master.tasks[task_name.name]
+            # TODO: ensure that STOP & START are both present
+            task.command_queue.put_nowait(runner.Command.STOP)
+            task.command_queue.put_nowait(runner.Command.START)
         except Exception:
+            # TODO(Dorian): Handle Exception
+            pass
+        except asyncio.QueueFull:
             # TODO(Dorian): Handle Exception
             pass
         return Empty()
@@ -86,7 +103,7 @@ class TaskMasterRunner(RunnerServicer):
         return Empty()
 
     async def shutdown(self, _arg: Empty, _context) -> Empty:
-        print("shutdown")
+        self.task_master.shutdown_event.set()
         return Empty()
 
 

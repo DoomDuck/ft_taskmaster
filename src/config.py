@@ -1,9 +1,10 @@
-import datetime
 import yaml
+import datetime
+from signal import Signals
 from typing import Optional  # Pour les annotations de type
 from enum import Enum
 from dataclasses import dataclass, field
-from schema import Schema, And, Or, Optional as SchemaOptional, SchemaError
+from schema import Schema, And, Or, Optional as SchemaOptional, SchemaError, Use
 from datetime import timedelta
 
 
@@ -15,10 +16,6 @@ class RestartCondition(Enum):
 
 def default_success_exit_codes() -> set[int]:
     return set([0])
-
-
-class Signal(str):
-    pass
 
 
 @dataclass
@@ -50,7 +47,7 @@ class TaskDescription:
     success_start_delay: timedelta = timedelta(seconds=1)
     restart_attempts: int = 3
     # TODO(Dorian): Make the `Signal` class
-    gracefull_shutdown_signal: Optional[Signal] = None
+    gracefull_shutdown_signal: Optional[Signals] = None
     gracefull_shutdown_success_delay: timedelta = timedelta(seconds=3)
     stdout: Optional[str] = None
     stderr: Optional[str] = None
@@ -76,11 +73,14 @@ program_schema = Schema({
     SchemaOptional('start_on_launch'): bool,
     # TODO: factorize condition
     SchemaOptional('restart'):
+        # TODO: Use Enum class static methods
         And(str, lambda s: s in ['always', 'never', 'onfailure']),
     SchemaOptional('success_exit_codes'): [int],
     SchemaOptional('success_start_delay'): And(int, lambda n: n >= 0),
     SchemaOptional('restart_attempts'): And(int, lambda n: n >= 0),
-    SchemaOptional('gracefull_shutdown_signal'): str,
+    SchemaOptional('gracefull_shutdown_signal'): 
+        # TODO improve error message
+        And(str, Use(Signals.__getitem__)),
     SchemaOptional('gracefull_shutdown_success_delay'):
         And(int, lambda n: n >= 0),
     SchemaOptional('stdout'): str,
@@ -110,8 +110,8 @@ def parse_configuration(program_data: dict) -> TaskDescription:
         success_start_delay=datetime.timedelta(
             seconds=program_data.get('success_start_delay', 0)),
         restart_attempts=program_data.get('restart_attempts', 3),
-        gracefull_shutdown_signal=Signal(
-            program_data.get('gracefull_shutdown_signal', 'SIGTERM').upper()),
+        gracefull_shutdown_signal=
+            Signals[program_data.get('gracefull_shutdown_signal', "SIGINT")],
         gracefull_shutdown_success_delay=datetime.timedelta(
             seconds=program_data.get('gracefull_shutdown_success_delay', 10)),
         stdout=program_data.get('stdout'),

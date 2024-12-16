@@ -8,7 +8,7 @@ import config
 import rpc
 from echo_server import EchoServer
 from argparse import ArgumentParser, Namespace
-from runner import TaskMaster
+from runner import TaskMaster, TaskMasterShutdown
 
 
 cla = ArgumentParser(
@@ -45,6 +45,15 @@ cla.add_argument(
 )
 
 
+def raise_exception_if_root_user():
+    "Check if user is root."
+    if os.geteuid() == 0:
+        raise Exception("""
+            Taskmaster being run as root /!\\
+            To allow use the `--allow-root` flag
+        """)
+
+
 def main():
     "Program entry point"
 
@@ -63,18 +72,8 @@ def main():
         logging.error(f"Error starting: {exception}")
 
 
-def raise_exception_if_root_user():
-    "Check if user is root."
-    if os.geteuid() == 0:
-        raise Exception("""
-            Taskmaster being run as root /!\\
-            To allow use the `--allow-root` flag
-        """)
-
-
 async def start(arguments: Namespace):
-
-    # Forbid use from being root
+    # Forbid use root user
     if not arguments.allow_root:
         raise_exception_if_root_user()
 
@@ -85,17 +84,26 @@ async def start(arguments: Namespace):
         return
 
     task_master = TaskMaster(configuration)
-    echo_server = EchoServer(task_master)
-    rpc_server = rpc.Server(task_master)
 
-    try:
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(task_master.run())
-            tg.create_task(echo_server.serve(4242))
-            tg.create_task(rpc_server.serve(arguments.port))
-    except ExceptionGroup as exception_group:
-        for exception in exception_group.exceptions:
-            logging.error(exception)
+    # Wait for taskmaster to start
+    await task_master.start()
+
+    rpc_server = rpc.Server(task_master)
+    
+    task_master_wait = asyncio.create_task(task_master.wait())
+    serve_rpc = asyncio.create_task(rpc_server.serve(arguments.port))
+    (done, pending) = await asyncio.wait(
+        [ task_master_wait, serve_rpc ],
+        return_when=asyncio.FIRST_COMPLETED
+    )
+
+    if not task_master_wait.done():
+        task_master_wait.cancel()
+
+    if not serve_rpc.done():
+        serve_rpc.cancel()
+
+    await asyncio.wait(pending)
 
 
 if __name__ == "__main__":
