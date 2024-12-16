@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import os
+import rpc
+import config
 import asyncio
 import logging
-import config
 
-import rpc
+from signal import Signals
 from echo_server import EchoServer
 from argparse import ArgumentParser, Namespace
 from runner import TaskMaster, TaskMasterShutdown
@@ -87,6 +88,13 @@ async def start(arguments: Namespace):
 
     # Wait for taskmaster to start
     await task_master.start()
+
+    event_loop = asyncio.get_event_loop()
+
+    event_loop.add_signal_handler(
+        Signals.SIGINT,
+        lambda : task_master.shutdown_event.set(),
+    )
 
     rpc_server = rpc.Server(task_master)
     
