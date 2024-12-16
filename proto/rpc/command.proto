@@ -11,9 +11,13 @@ service Runner {
   rpc reload(google.protobuf.Empty) returns (google.protobuf.Empty);
   rpc shutdown(google.protobuf.Empty) returns (google.protobuf.Empty);
   rpc list(google.protobuf.Empty) returns (stream TaskName);
+  rpc status(TaskName) returns (TaskStatus);
 }
 
 message TaskName {
   string name = 1;
 }
 
+message TaskStatus {
+  string status = 1;
+}

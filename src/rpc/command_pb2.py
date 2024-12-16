@@ -16,7 +16,7 @@ from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 from google.protobuf.empty_pb2 import *
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x11rpc/command.proto\x12\nTaskMaster\x1a\x1bgoogle/protobuf/empty.proto\"\x18\n\x08TaskName\x12\x0c\n\x04name\x18\x01 \x01(\t2\xdc\x02\n\x06Runner\x12\x35\n\x05start\x12\x14.TaskMaster.TaskName\x1a\x16.google.protobuf.Empty\x12\x34\n\x04stop\x12\x14.TaskMaster.TaskName\x1a\x16.google.protobuf.Empty\x12\x37\n\x07restart\x12\x14.TaskMaster.TaskName\x1a\x16.google.protobuf.Empty\x12\x38\n\x06reload\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\x12:\n\x08shutdown\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\x12\x36\n\x04list\x12\x16.google.protobuf.Empty\x1a\x14.TaskMaster.TaskName0\x01P\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x11rpc/command.proto\x12\nTaskMaster\x1a\x1bgoogle/protobuf/empty.proto\"\x18\n\x08TaskName\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1c\n\nTaskStatus\x12\x0e\n\x06status\x18\x01 \x01(\t2\x94\x03\n\x06Runner\x12\x35\n\x05start\x12\x14.TaskMaster.TaskName\x1a\x16.google.protobuf.Empty\x12\x34\n\x04stop\x12\x14.TaskMaster.TaskName\x1a\x16.google.protobuf.Empty\x12\x37\n\x07restart\x12\x14.TaskMaster.TaskName\x1a\x16.google.protobuf.Empty\x12\x38\n\x06reload\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\x12:\n\x08shutdown\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\x12\x36\n\x04list\x12\x16.google.protobuf.Empty\x1a\x14.TaskMaster.TaskName0\x01\x12\x36\n\x06status\x12\x14.TaskMaster.TaskName\x1a\x16.TaskMaster.TaskStatusP\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -25,6 +25,8 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
   _globals['_TASKNAME']._serialized_start=62
   _globals['_TASKNAME']._serialized_end=86
-  _globals['_RUNNER']._serialized_start=89
-  _globals['_RUNNER']._serialized_end=437
+  _globals['_TASKSTATUS']._serialized_start=88
+  _globals['_TASKSTATUS']._serialized_end=116
+  _globals['_RUNNER']._serialized_start=119
+  _globals['_RUNNER']._serialized_end=523
 # @@protoc_insertion_point(module_scope)

@@ -7,7 +7,7 @@ from rpc import command_pb2_grpc
 
 from typing import List, AsyncGenerator
 from runner import TaskMaster
-from rpc.command_pb2 import TaskName, Empty
+from rpc.command_pb2 import TaskName, TaskStatus, Empty
 from rpc.command_pb2_grpc import RunnerStub, RunnerServicer
 
 DEFAULT_PORT: int = 50051
@@ -35,6 +35,9 @@ class Client:
             self.stub.list(Empty())
         ))
 
+    def status(self, task: str) -> str:
+        return self.stub.status(TaskName(name=task)).status
+
     def reload(self):
         self.stub.reload(Empty())
 
@@ -52,7 +55,7 @@ class Client:
 class TaskMasterRunner(RunnerServicer):
     task_master: TaskMaster
 
-    def __init__(self, task_master):
+    def __init__(self, task_master: TaskMaster):
         self.task_master = task_master
 
     async def start(self, task_name: TaskName, _context) -> Empty:
@@ -93,7 +96,17 @@ class TaskMasterRunner(RunnerServicer):
             pass
         return Empty()
 
-    # TODO(Dorian): Add return type
+    async def status(self, task_name: TaskName, _context) -> TaskStatus:
+        try:
+            task = self.task_master.tasks[task_name.name]
+            return TaskStatus(status=task.status.name)
+        except Exception:
+            # TODO(Dorian): Handle Exception
+            pass
+
+        return TaskStatus(status="unknown")
+
+
     async def list(self, _arg: Empty, _context) -> AsyncGenerator[TaskName, None]:
         for name in self.task_master.tasks:
             yield TaskName(name=name)

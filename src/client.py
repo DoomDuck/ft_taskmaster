@@ -99,6 +99,12 @@ def run(client: rpc.Client):
                         client.stop(task)
                     case ["restart", task]:
                         client.restart(task)
+                    case ["status", task]:
+                        status = client.status(task)
+                        print(f"Task is {status}")
+                    case ["list"]:
+                        for task in client.list():
+                            print(task)
                     case ["reload"]:
                         client.reload()
                     case ["shutdown"]:

@@ -45,6 +45,11 @@ class RunnerStub(object):
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
                 response_deserializer=rpc_dot_command__pb2.TaskName.FromString,
                 )
+        self.status = channel.unary_unary(
+                '/TaskMaster.Runner/status',
+                request_serializer=rpc_dot_command__pb2.TaskName.SerializeToString,
+                response_deserializer=rpc_dot_command__pb2.TaskStatus.FromString,
+                )
 
 
 class RunnerServicer(object):
@@ -86,6 +91,12 @@ class RunnerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def status(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_RunnerServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -118,6 +129,11 @@ def add_RunnerServicer_to_server(servicer, server):
                     servicer.list,
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                     response_serializer=rpc_dot_command__pb2.TaskName.SerializeToString,
+            ),
+            'status': grpc.unary_unary_rpc_method_handler(
+                    servicer.status,
+                    request_deserializer=rpc_dot_command__pb2.TaskName.FromString,
+                    response_serializer=rpc_dot_command__pb2.TaskStatus.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -228,5 +244,22 @@ class Runner(object):
         return grpc.experimental.unary_stream(request, target, '/TaskMaster.Runner/list',
             google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             rpc_dot_command__pb2.TaskName.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def status(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/TaskMaster.Runner/status',
+            rpc_dot_command__pb2.TaskName.SerializeToString,
+            rpc_dot_command__pb2.TaskStatus.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
