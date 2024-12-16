@@ -2,12 +2,12 @@ import os
 import logging
 import asyncio
 from asyncio.subprocess import Process
-from enum import Enum
+from enum import IntEnum
 from typing import List, Optional, Any
 from config import Configuration, TaskDescription, RestartCondition
 
 
-class Status(Enum):
+class Status(IntEnum):
     # Process is stop or has'nt been started
     STOPPED = 0
     # Process hasn't been running long enough to be considered
@@ -25,7 +25,7 @@ class Status(Enum):
     FATAL = 6
 
 
-class Command(Enum):
+class Command(IntEnum):
     START = 0
     STOP = 1
 

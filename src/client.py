@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import rpc
+import grpc
 import readline
 import platform
 
@@ -106,10 +107,12 @@ def run(client: rpc.Client):
                         break
                     case _:
                         print("Invalid command:", command_line)
+            except grpc.RpcError:
+                print("Server is not responding, is it running ?")
             except Exception as e:
                 print(f"Error running command: {e}")
 
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, EOFError):
             print("\nExiting Taskmaster.")
             break
 
