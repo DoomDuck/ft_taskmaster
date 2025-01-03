@@ -1,0 +1,5 @@
+programs:
+  test_env:
+    command: ./script/check_env_is_set.sh
+    restart: never
+

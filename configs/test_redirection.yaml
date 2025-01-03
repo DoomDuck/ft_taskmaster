@@ -1,0 +1,9 @@
+programs:
+
+  stdout_redirect:
+    command: "echo Hello stdout"
+    stdout: /tmp/stdout.txt
+
+  stderr_redirect:
+    command: "echo Hello stderr 1>&2"
+    stderr: /tmp/stderr.txt

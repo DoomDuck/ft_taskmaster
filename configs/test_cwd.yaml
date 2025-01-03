@@ -1,0 +1,9 @@
+programs:
+
+  should_exit_with_error:
+    command: ./scripts/check_cwd_is_scripts.sh
+    restart: never
+
+  should_exit_successfully:
+    command: ./check_cwd_is_scripts.sh
+    pwd: ./scripts
