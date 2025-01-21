@@ -44,7 +44,7 @@ class Task:
         self.status = Status.STOPPED
         self.process = None
         self.command_queue = asyncio.Queue()
-        self.logger = logging.getLogger(name)
+        self.logger = logging.getLogger(f"task:{name}")
 
     def make_start_arguments(self) -> dict[str, Any]:
         arguments: dict[str, Any] = {}
@@ -53,26 +53,47 @@ class Task:
             env.update(self.description.environment)
             arguments["env"] = env
 
-        # if self.description.pwd is not None:
-        #     arguments["pwd"] = self.description.pwd
+        if self.description.pwd is not None:
+            # In the arguments it is called `cwd` for current working directory
+            arguments["cwd"] = self.description.pwd
+
+        if self.description.umask is not None:
+            arguments["umask"] = self.description.umask
+
+        try:
+            if self.description.stdout is not None:
+                arguments["stdout"] = open(self.description.stdout, mode="w+b")
+
+            if self.description.stderr is not None:
+                arguments["stderr"] = open(self.description.stderr, mode="w+b")
+        except Exception:
+            if arguments.get("stdout") is not None:
+                arguments["stdout"].close()
+
+            if arguments.get("stderr") is not None:
+                arguments["stderr"].close()
+
+            raise
 
         return arguments
 
     async def start(self):
         self.status = Status.STARTING
-        self.logger.info("Starting")
+        self.logger.debug("Starting")
         self.process = await asyncio.create_subprocess_shell(
-                self.description.command,
-                **self.make_start_arguments())
+            self.description.command, **self.make_start_arguments()
+        )
         await self.wait_successful_start()
 
     async def wait_successful_start(self):
-        self.logger.info("Waiting for successful start")
-        delay = self.description.success_start_delay.total_seconds()
+        self.logger.debug("Waiting for successful start")
+        delay = self.description.start_timeout.total_seconds()
+        if delay == 0:
+            return
         try:
             async with asyncio.timeout(delay):
                 await self.wait()
-                self.logger.info("Start failed")
+                self.logger.debug("Start failed")
                 raise TaskStartFailure(self.description)
         except asyncio.TimeoutError:
             self.logger.info("Successful start")
@@ -81,7 +102,7 @@ class Task:
     # TODO: Add gracefull stop && force stop methods
     async def wait(self) -> int:
         """
-            Warning only call when process is running
+        Warning only call when process is running
         """
         if self.process is None:
             raise Exception("Waiting for a process that is not running")
@@ -91,14 +112,12 @@ class Task:
         return exit_code
 
     async def try_successive_starts(self):
-        self.logger.info("Starting task")
-        for attempt_number in range(self.description.restart_attempts):
-            self.logger.info(f"Start number {attempt_number + 1}")
+        self.logger.info("Starting")
+        for attempt_number in range(self.description.restart_attempts + 1):
             try:
                 return await self.start()
             except TaskStartFailure:
-                # TODO: log error
-                self.logger.info("Task did not run long enough")
+                self.logger.debug("Task did not run long enough")
                 continue
             except asyncio.CancelledError:
                 raise
@@ -106,20 +125,21 @@ class Task:
                 self.logger.error(f"Starting process: {e}")
                 self.status = Status.FATAL
                 return
+            self.logger.debug(f"Try to start again {attempt_number + 1}")
         self.logger.warning("Could not start process")
         self.status = Status.BACKOFF
 
     async def gracefull_shutdown(self):
         self.logger.info("Shutting down")
-        signal = self.description.gracefull_shutdown_signal
+        signal = self.description.shutdown_signal
         if signal is None:
             return
 
-        self.process.send_signal(signal)
+        if self.process is not None:
+            self.process.send_signal(signal)
 
         await asyncio.wait_for(
-            self.wait(),
-            self.description.gracefull_shutdown_success_delay.total_seconds()
+            self.wait(), self.description.shutdown_timeout.total_seconds()
         )
 
     async def manage(self):
@@ -134,17 +154,17 @@ class Task:
             else:
                 successful_exit = await self.manage_running()
 
-                restarts_on_failure = (
-                    self.description.restart == RestartCondition.ONFAILURE
-                )
-                # TODO: fix the condition
-                if restarts_on_failure and not successful_exit:
-                    continue
+                match self.description.restart:
+                    case RestartCondition.NEVER:
+                        continue
+                    case RestartCondition.ON_FAILURE:
+                        if successful_exit:
+                            continue
+                    case RestartCondition.ALWAYS:
+                        pass
 
             # Try to start the program
             await self.try_successive_starts()
-
-        print("Finished managing")
 
     async def manage_running(self) -> bool:
         process_update = None
@@ -154,14 +174,14 @@ class Task:
             if not process_update:
                 process_update = asyncio.create_task(self.wait())
             if not incomming_command:
-                incomming_command = (
-                    asyncio.create_task(self.command_queue.get())
+                incomming_command = asyncio.create_task(
+                    self.command_queue.get()
                 )
 
             # Wait for at least one
             await asyncio.wait(
                 (process_update, incomming_command),
-                return_when=asyncio.FIRST_COMPLETED
+                return_when=asyncio.FIRST_COMPLETED,
             )
 
             # Handle command
@@ -172,8 +192,8 @@ class Task:
                     case Command.STOP:
                         await self.gracefull_shutdown()
                 # Commands can get lost
-                incomming_command = (
-                    asyncio.create_task(self.command_queue.get())
+                incomming_command = asyncio.create_task(
+                    self.command_queue.get()
                 )
 
             # Handle process update
@@ -182,23 +202,21 @@ class Task:
                 success_exit_codes = self.description.success_exit_codes
                 successful_exit = exit_code in success_exit_codes
                 status_message = "success" if successful_exit else "failure"
-                self.logger.info((
-                    f"exited with code {exit_code} "
-                    f"({status_message})"
-                ))
+                self.logger.info(
+                    (f"exited with code {exit_code} " f"({status_message})")
+                )
                 return successful_exit
 
     async def manage_idle(self):
-        self.logger.info("Going to idle")
+        self.logger.debug("Going to idle")
         while True:
             match await self.command_queue.get():
                 case Command.START:
-                    self.logger.info("Starting")
+                    self.logger.debug("Starting")
                     break
                 case Command.STOP:
-                    self.logger.info("Program already stopped")
+                    self.logger.debug("Program already stopped")
         self.logger.info("Stopped being idle")
-
 
 
 class TaskStartFailure(Exception):
@@ -207,61 +225,79 @@ class TaskStartFailure(Exception):
     def __init__(self, task: TaskDescription):
         super().__init__(self, f"could not start `{task.command}`")
 
-class TaskMasterShutdown(Exception):
+
+class TaskMasterCommand:
     pass
 
+
+class Reload(TaskMasterCommand):
+    pass
+
+
+class Shutdown(TaskMasterCommand):
+    pass
+
+
 class TaskMaster:
-    # TODO: add a logger
     tasks: dict[str, Task]
+    # TODO: rename
     coroutines: List[asyncio.Task]
     configuration: Configuration
-    shutdown_event: asyncio.Event
+    command_queue: asyncio.Queue[TaskMasterCommand]
+    logger: logging.Logger
 
     def __init__(self, configuration: Configuration):
         self.tasks = {}
-        # TODO: rename 
         self.coroutines = []
         self.configuration = configuration
-        self.shutdown_event = asyncio.Event()
+        self.command_queue = asyncio.Queue()
+        # TODO: find a better name
+        self.logger = logging.getLogger("TaskMaster")
 
     async def start(self):
         logging.info("Starting taskmaster")
         for name, desc in self.configuration.tasks.items():
             task = Task(name, desc)
             self.tasks[name] = task
-            self.coroutines.append(asyncio.create_task(
-                task.manage(),
-                name=f"Manage {name}"
-            ))
+            self.coroutines.append(
+                asyncio.create_task(task.manage(), name=f"Manage {name}")
+            )
+
+    async def handle_commands(self):
+        while True:
+            command = await self.command_queue.get()
+            if isinstance(command, Reload):
+                self.logger.info("Reloading")
+            elif isinstance(command, Shutdown):
+                self.logger.info("Shutting down")
+                break
 
     async def wait(self):
-        wait_for_tasks = asyncio.create_task(asyncio.wait(
-            self.coroutines,
-            return_when=asyncio.FIRST_EXCEPTION,
-        ))
-        wait_for_shutdown = asyncio.create_task(
-            self.shutdown_event.wait()
+        wait_for_tasks = asyncio.create_task(
+            asyncio.wait(
+                self.coroutines,
+                return_when=asyncio.FIRST_EXCEPTION,
+            )
         )
+        handle_commands = asyncio.create_task(self.handle_commands())
 
-        await asyncio.wait([
+        await asyncio.wait(
+            [
                 wait_for_tasks,
-                wait_for_shutdown,
+                # wait_for_shutdown,
+                handle_commands,
             ],
             return_when=asyncio.FIRST_COMPLETED,
         )
 
         for coro in self.coroutines:
-            # Exception can only when task is done
+            # Exception can only have happened if a task is done
             if not coro.done():
                 continue
 
             ex = coro.exception()
             if ex is not None:
                 logging.error(f"{coro.get_name()}: {ex}")
-
-
-        if wait_for_shutdown.done():
-            logging.info("Received shutdown event")
 
         if wait_for_tasks.done():
             return

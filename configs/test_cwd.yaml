@@ -1,5 +1,4 @@
-programs:
-
+tasks:
   should_exit_with_error:
     command: ./scripts/check_cwd_is_scripts.sh
     restart: never

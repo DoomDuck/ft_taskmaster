@@ -1,5 +1,4 @@
-programs:
-
+tasks:
   stdout_redirect:
     command: "echo Hello stdout"
     stdout: /tmp/stdout.txt

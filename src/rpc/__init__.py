@@ -30,10 +30,9 @@ class Client:
         self.stub.restart(TaskName(name=task))
 
     def list(self) -> List[str]:
-        return list(map(
-            lambda task_name: task_name.name,
-            self.stub.list(Empty())
-        ))
+        return list(
+            map(lambda task_name: task_name.name, self.stub.list(Empty()))
+        )
 
     def status(self, task: str) -> str:
         return self.stub.status(TaskName(name=task)).status
@@ -61,11 +60,8 @@ class TaskMasterRunner(RunnerServicer):
     async def start(self, task_name: TaskName, _context) -> Empty:
         try:
             task = self.task_master.tasks[task_name.name]
-            task.command_queue.put_nowait(runner.Command.START)
+            await task.command_queue.put(runner.Command.START)
         except Exception:
-            # TODO(Dorian): Handle Exception
-            pass
-        except asyncio.QueueFull:
             # TODO(Dorian): Handle Exception
             pass
         return Empty()
@@ -73,11 +69,8 @@ class TaskMasterRunner(RunnerServicer):
     async def stop(self, task_name: TaskName, _context) -> Empty:
         try:
             task = self.task_master.tasks[task_name.name]
-            task.command_queue.put_nowait(runner.Command.STOP)
+            await task.command_queue.put(runner.Command.STOP)
         except Exception:
-            # TODO(Dorian): Handle Exception
-            pass
-        except asyncio.QueueFull:
             # TODO(Dorian): Handle Exception
             pass
         return Empty()
@@ -85,13 +78,9 @@ class TaskMasterRunner(RunnerServicer):
     async def restart(self, task_name: TaskName, _context) -> Empty:
         try:
             task = self.task_master.tasks[task_name.name]
-            # TODO: ensure that STOP & START are both present
-            task.command_queue.put_nowait(runner.Command.STOP)
-            task.command_queue.put_nowait(runner.Command.START)
+            await task.command_queue.put(runner.Command.STOP)
+            await task.command_queue.put(runner.Command.START)
         except Exception:
-            # TODO(Dorian): Handle Exception
-            pass
-        except asyncio.QueueFull:
             # TODO(Dorian): Handle Exception
             pass
         return Empty()
@@ -106,17 +95,18 @@ class TaskMasterRunner(RunnerServicer):
 
         return TaskStatus(status="unknown")
 
-
-    async def list(self, _arg: Empty, _context) -> AsyncGenerator[TaskName, None]:
+    async def list(
+        self, _arg: Empty, _context
+    ) -> AsyncGenerator[TaskName, None]:
         for name in self.task_master.tasks:
             yield TaskName(name=name)
 
     async def reload(self, _arg: Empty, _context) -> Empty:
-        print("reload")
+        await self.task_master.command_queue.put(runner.Reload())
         return Empty()
 
     async def shutdown(self, _arg: Empty, _context) -> Empty:
-        self.task_master.shutdown_event.set()
+        await self.task_master.command_queue.put(runner.Shutdown())
         return Empty()
 
 

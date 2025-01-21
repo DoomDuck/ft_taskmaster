@@ -1,4 +1,4 @@
-programs:
+tasks:
   on_sigusr1:
     command: "./scripts/stop_on_sigusr1.sh"
     gracefull_shutdown_signal: "SIGUSR1"

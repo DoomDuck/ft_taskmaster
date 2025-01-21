@@ -1,5 +1,4 @@
-programs:
-
+tasks:
   should_exit_with_error:
     command: ./scripts/check_umask_is_0765.sh
     restart: never

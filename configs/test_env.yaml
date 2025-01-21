@@ -1,5 +1,13 @@
-programs:
-  test_env:
-    command: ./script/check_env_is_set.sh
+tasks:
+  should_exit_with_error:
+    command: ./scripts/check_env_is_set.sh
+    start_timeout: 0
     restart: never
+
+  should_exit_successfully:
+    command: ./scripts/check_env_is_set.sh
+    start_timeout: 0
+    environment:
+      SHOULD_BE_SET: "is_set"
+
 

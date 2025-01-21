@@ -41,7 +41,7 @@ class CompletionEngine:
     def __init__(self, client: rpc.Client):
         self.client = client
 
-    def get_matches(self, prefix: str):
+    def get_matches(self, prefix: str) -> [str]:
         return [
             task_name
             for task_name in self.client.list()
@@ -52,10 +52,7 @@ class CompletionEngine:
         buffer = readline.get_line_buffer()
         cmd, *cmd_with_args = buffer.split()
         if not cmd_with_args:
-            matches = [
-                cmd for cmd in commands
-                if cmd.startswith(text)
-            ]
+            matches = [cmd for cmd in commands if cmd.startswith(text)]
         elif cmd_with_args:
             matches = self.get_matches(text)
 
@@ -83,9 +80,7 @@ def run(client: rpc.Client):
     while True:
         try:
             command_line = input(
-                Colors.YELLOW +
-                "🔧 Taskmaster\n   ⤷ " +
-                Colors.RESET,
+                Colors.YELLOW + "🔧 Taskmaster\n   ⤷ " + Colors.RESET,
             )
 
             if not command_line:

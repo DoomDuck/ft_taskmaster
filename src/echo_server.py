@@ -36,11 +36,8 @@ class Connection:
     writer: StreamWriter
 
     def __init__(
-            self,
-            server: EchoServer,
-            reader: StreamReader,
-            writer: StreamWriter
-            ):
+        self, server: EchoServer, reader: StreamReader, writer: StreamWriter
+    ):
         self.server = server
         self.reader = reader
         self.writer = writer

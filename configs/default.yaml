@@ -1,22 +1,22 @@
-programs:
+tasks:
     echo:
         command: "echo Boujour"
         replicas: 1
         start_on_launch: true
         restart_attempts: 2
-        restart: "onfailure"
+        restart: "on_failure"
         success_exit_codes: [0, 1]
-        success_start_delay: 3
+        start_timeout: 3
 
     sleep:
         command: "sleep infinity"
         replicas: 1
         start_on_launch: true
-        restart: "onfailure"
+        restart: "on_failure"
         success_exit_codes: [0, 1]
-        success_start_delay: 2
+        start_timeout: 2
         restart_attempts: 5
-        gracefull_shutdown_signal: "SIGINT"
-        gracefull_shutdown_success_delay: 15
-        stderr: "/var/log/apache_stderr.log"
-        pwd: "/etc/apache2"
+        shutdown_signal: "SIGINT"
+        shutdown_timeout: 15
+        # stderr: "/var/log/apache_stderr.log"
+        # pwd: "/etc/apache2"

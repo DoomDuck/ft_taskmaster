@@ -2,18 +2,17 @@
 
 import os
 import rpc
-import config
 import asyncio
 import logging
+import runner
 
 from signal import Signals
-from echo_server import EchoServer
+from runner import TaskMaster
+from config import Configuration
 from argparse import ArgumentParser, Namespace
-from runner import TaskMaster, TaskMasterShutdown
 
 
-cla = ArgumentParser(
-    description='sum the integers at the command line')
+cla = ArgumentParser(description="sum the integers at the command line")
 
 cla.add_argument(
     "config_file",
@@ -22,13 +21,7 @@ cla.add_argument(
     default="./configs/default.yaml",
 )
 
-cla.add_argument(
-    "-l",
-    "--log-file",
-    type=str,
-    help="Log file",
-    default=None
-)
+cla.add_argument("-l", "--log-file", type=str, help="Log file", default=None)
 
 cla.add_argument(
     "-p",
@@ -46,9 +39,20 @@ cla.add_argument(
 )
 
 
+cla.add_argument(
+    "-L",
+    "--log-level",
+    type=str,
+    choices=logging.getLevelNamesMapping().keys(),
+    help="log level",
+    default="INFO",
+)
+
+
 def raise_exception_if_root_user():
     "Check if user is root."
     if os.geteuid() == 0:
+        # fmt: off
         raise Exception("""
             Taskmaster being run as root /!\\
             To allow use the `--allow-root` flag
@@ -62,13 +66,12 @@ def main():
 
     logging.basicConfig(
         filename=arguments.log_file,
-        level=logging.INFO,
+        level=arguments.log_level,
+        format="[%(levelname)s] %(name)s: %(message)s",
     )
 
     try:
         asyncio.run(start(arguments))
-    except KeyboardInterrupt:
-        pass
     except Exception as exception:
         logging.error(f"Error starting: {exception}")
 
@@ -78,11 +81,7 @@ async def start(arguments: Namespace):
     if not arguments.allow_root:
         raise_exception_if_root_user()
 
-    try:
-        configuration = config.load(arguments.config_file)
-    except Exception as e:
-        logging.error(f"Could not load configuration: {e}")
-        return
+    configuration = Configuration.load(arguments.config_file)
 
     task_master = TaskMaster(configuration)
 
@@ -91,18 +90,23 @@ async def start(arguments: Namespace):
 
     event_loop = asyncio.get_event_loop()
 
-    event_loop.add_signal_handler(
-        Signals.SIGINT,
-        lambda : task_master.shutdown_event.set(),
-    )
+    def on_sigint():
+        event_loop.create_task(
+            task_master.command_queue.put(runner.Shutdown())
+        )
+
+    def on_sigusr1():
+        event_loop.create_task(task_master.command_queue.put(runner.Reload()))
+
+    event_loop.add_signal_handler(Signals.SIGINT, on_sigint)
+    event_loop.add_signal_handler(Signals.SIGUSR1, on_sigusr1)
 
     rpc_server = rpc.Server(task_master)
-    
-    task_master_wait = asyncio.create_task(task_master.wait())
-    serve_rpc = asyncio.create_task(rpc_server.serve(arguments.port))
+
+    task_master_wait = event_loop.create_task(task_master.wait())
+    serve_rpc = event_loop.create_task(rpc_server.serve(arguments.port))
     (done, pending) = await asyncio.wait(
-        [ task_master_wait, serve_rpc ],
-        return_when=asyncio.FIRST_COMPLETED
+        [task_master_wait, serve_rpc], return_when=asyncio.FIRST_COMPLETED
     )
 
     if not task_master_wait.done():
