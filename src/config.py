@@ -4,7 +4,7 @@ from __future__ import annotations
 import yaml
 import schema
 from signal import Signals
-from typing import Optional  # Pour les annotations de type
+from typing import Optional
 from enum import Enum
 from dataclasses import dataclass
 from schema import Schema, And, Or, Use
