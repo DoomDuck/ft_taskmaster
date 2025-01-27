@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import asyncio
-import logging
 
 from typing import Any
 from logging import Logger
@@ -104,7 +103,6 @@ class StageWithProcess(Stage):
         self.process = process
 
     def stop(self):
-        logging.info("Sending shutdown signal")
         signal = self.desc.shutdown_signal
         if signal is None:
             signal = Signals.SIGTERM
@@ -292,7 +290,7 @@ class Instance:
     stage: Stage
     shutting_down: bool
     finished: asyncio.Event
-    logger: logging.Logger
+    logger: Logger
 
     def __init__(self, desc: TaskDescription, logger: Logger):
         self.stage = NotStarted(desc)
@@ -329,7 +327,6 @@ class Instance:
         wait_until_finished = asyncio.create_task(self.finished.wait())
         wait_for_next_stage = asyncio.create_task(self.stage.next())
         while not self.finished.is_set():
-            self.logger.info(f"{self.stage}")
             await asyncio.wait(
                 (wait_until_finished, wait_for_next_stage),
                 return_when=asyncio.FIRST_COMPLETED,
@@ -338,6 +335,7 @@ class Instance:
             if wait_for_next_stage.done():
                 self.stage = wait_for_next_stage.result()
                 wait_for_next_stage = asyncio.create_task(self.stage.next())
+                self.logger.info(f"{self.stage}")
 
             self.update_finished()
 
