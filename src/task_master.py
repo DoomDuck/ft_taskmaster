@@ -64,11 +64,11 @@ class TaskMaster:
     def task(self, name: str) -> Optional[Task]:
         result = self.tasks.get(name)
         if result is None:
-            self.logger.warn(f'unknown task: "{name}"')
+            self.logger.warn(f'Unknown task: "{name}"')
         return result
 
     async def run(self):
-        self.logger.info("Starting taskmaster")
+        self.logger.info("Starting")
 
         configuration = Configuration.load(self.config_file)
 
@@ -93,7 +93,7 @@ class TaskMaster:
                         # TODO: Give the correct replica
                         await t.command_queue.put(task.Start(1))
                     else:
-                        self.logger.warn(f"unknown {command.task}")
+                        self.logger.warn(f'Unknown "{command.task}"')
                 case Stop():
                     command: Stop
                     t = self.task(command.task)
@@ -101,14 +101,12 @@ class TaskMaster:
                         # TODO: Give the correct replica
                         await t.command_queue.put(task.Stop(1))
                     else:
-                        self.logger.warn(f"unknown task {command.task}")
+                        self.logger.warn(f'Unknown task "{command.task}"')
 
                 case Reload():
                     command: Reload
                     self.logger.info("Reloading")
-                    # new_configuration = Configuration.load(self.config_file)
-
-                    # TODO: Check for config differences
+                    new_configuration = Configuration.load(self.config_file)
 
                 case Shutdown():
                     self.logger.info("Shutting down")
