@@ -53,7 +53,7 @@ class TaskDescription:
     restart: RestartCondition
     success_exit_codes: set[int]
     start_timeout: timedelta
-    restart_attempts: int
+    start_attempts: int
     shutdown_signal: Optional[Signals]
     shutdown_timeout: timedelta
     stdout: Optional[str]
@@ -70,7 +70,7 @@ class TaskDescription:
             schema.Optional("restart"): RestartSchema,
             schema.Optional("success_exit_codes"): [int],
             schema.Optional("start_timeout"): PositiveInt,
-            schema.Optional("restart_attempts"): PositiveInt,
+            schema.Optional("start_attempts"): StriclyPositiveInt,
             schema.Optional("shutdown_signal"): Signal,
             schema.Optional("shutdown_timeout"): PositiveInt,
             schema.Optional("stdout"): Path,
@@ -90,7 +90,7 @@ class TaskDescription:
             restart=RestartCondition(d.get("restart", "on_failure")),
             success_exit_codes=set(d.get("success_exit_codes", [0])),
             start_timeout=timedelta(seconds=d.get("start_timeout", 3)),
-            restart_attempts=d.get("restart_attempts", 3),
+            start_attempts=d.get("start_attempts", 3),
             shutdown_signal=Signals[d.get("shutdown_signal", "SIGINT")],
             shutdown_timeout=timedelta(seconds=d.get("shutdown_timeout", 10)),
             stdout=d.get("stdout"),
@@ -99,6 +99,25 @@ class TaskDescription:
             pwd=d.get("pwd"),
             umask=int(d.get("umask", "644"), base=8),
         )
+
+    def __eq__(self, other) -> bool:
+        return (
+            self.command == other.command and
+            self.replicas == other.replicas and
+            self.start_on_launch == other.start_on_launch and
+            self.restart== other.restart and
+            self.success_exit_codes == other.success_exit_codes and
+            self.start_timeout == other.start_timeout and
+            self.start_attempts == other.start_attempts and
+            self.shutdown_signal == other.shutdown_signal and
+            self.shutdown_timeout == other.shutdown_timeout and
+            self.stdout == other.stdout and
+            self.stderr == other.stderr and
+            self.environment == other.environment and
+            self.pwd == other.pwd and
+            self.umask == other.umask
+        )
+
 
 
 @dataclass
@@ -124,3 +143,6 @@ class Configuration:
             data_dictionnary = yaml.load(file, Loader=yaml.SafeLoader)
         Configuration.schema.validate(data_dictionnary)
         return Configuration.build(data_dictionnary)
+
+    def __eq__(self, other) -> bool:
+        return self.tasks == other.tasks

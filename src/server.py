@@ -4,10 +4,9 @@ import os
 import rpc
 import asyncio
 import logging
-import runner
 
 from signal import Signals
-from runner import TaskMaster
+from task_master import TaskMaster
 from config import Configuration
 from argparse import ArgumentParser, Namespace
 
@@ -81,32 +80,28 @@ async def start(arguments: Namespace):
     if not arguments.allow_root:
         raise_exception_if_root_user()
 
-    configuration = Configuration.load(arguments.config_file)
+    logger = logging.getLogger()
 
-    task_master = TaskMaster(configuration)
-
-    # Wait for taskmaster to start
-    await task_master.start()
+    task_master = TaskMaster(logger, arguments.config_file, )
 
     event_loop = asyncio.get_event_loop()
 
     def on_sigint():
-        event_loop.create_task(
-            task_master.command_queue.put(runner.Shutdown())
-        )
+        event_loop.create_task(task_master.shutdown())
 
     def on_sigusr1():
-        event_loop.create_task(task_master.command_queue.put(runner.Reload()))
+        event_loop.create_task(task_master.reload())
 
     event_loop.add_signal_handler(Signals.SIGINT, on_sigint)
     event_loop.add_signal_handler(Signals.SIGUSR1, on_sigusr1)
 
     rpc_server = rpc.Server(task_master)
 
-    task_master_wait = event_loop.create_task(task_master.wait())
+    task_master_wait = event_loop.create_task(task_master.run())
     serve_rpc = event_loop.create_task(rpc_server.serve(arguments.port))
     (done, pending) = await asyncio.wait(
-        [task_master_wait, serve_rpc], return_when=asyncio.FIRST_COMPLETED
+        (task_master_wait, serve_rpc),
+        return_when=asyncio.FIRST_COMPLETED,
     )
 
     if not task_master_wait.done():

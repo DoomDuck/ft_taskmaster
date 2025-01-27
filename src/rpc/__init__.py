@@ -1,12 +1,12 @@
 import grpc
 
-import runner
+import task_master
 import asyncio
 
 from rpc import command_pb2_grpc
 
 from typing import List, AsyncGenerator
-from runner import TaskMaster
+from task_master import TaskMaster
 from rpc.command_pb2 import TaskName, TaskStatus, Empty
 from rpc.command_pb2_grpc import RunnerStub, RunnerServicer
 
@@ -58,55 +58,31 @@ class TaskMasterRunner(RunnerServicer):
         self.task_master = task_master
 
     async def start(self, task_name: TaskName, _context) -> Empty:
-        try:
-            task = self.task_master.tasks[task_name.name]
-            await task.command_queue.put(runner.Command.START)
-        except Exception:
-            # TODO(Dorian): Handle Exception
-            pass
+        await self.task_master.start(task_name.name)
         return Empty()
 
     async def stop(self, task_name: TaskName, _context) -> Empty:
-        try:
-            task = self.task_master.tasks[task_name.name]
-            await task.command_queue.put(runner.Command.STOP)
-        except Exception:
-            # TODO(Dorian): Handle Exception
-            pass
+        await self.task_master.stop(task_name.name)
         return Empty()
 
     async def restart(self, task_name: TaskName, _context) -> Empty:
-        try:
-            task = self.task_master.tasks[task_name.name]
-            await task.command_queue.put(runner.Command.STOP)
-            await task.command_queue.put(runner.Command.START)
-        except Exception:
-            # TODO(Dorian): Handle Exception
-            pass
+        await self.restart(task_name.name)
         return Empty()
 
     async def status(self, task_name: TaskName, _context) -> TaskStatus:
-        try:
-            task = self.task_master.tasks[task_name.name]
-            return TaskStatus(status=task.status.name)
-        except Exception:
-            # TODO(Dorian): Handle Exception
-            pass
+        # TODO: Return status
+        return NotImplemented
 
-        return TaskStatus(status="unknown")
-
-    async def list(
-        self, _arg: Empty, _context
-    ) -> AsyncGenerator[TaskName, None]:
+    async def list(self, _arg: Empty, _context) -> AsyncGenerator[TaskName, None]:
         for name in self.task_master.tasks:
             yield TaskName(name=name)
 
     async def reload(self, _arg: Empty, _context) -> Empty:
-        await self.task_master.command_queue.put(runner.Reload())
+        await self.task_master.reload()
         return Empty()
 
     async def shutdown(self, _arg: Empty, _context) -> Empty:
-        await self.task_master.command_queue.put(runner.Shutdown())
+        await self.task_master.shutdown()
         return Empty()
 
 

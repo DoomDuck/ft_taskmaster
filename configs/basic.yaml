@@ -1,0 +1,3 @@
+tasks:
+    do_nothing:
+        command: "sleep infinity"
