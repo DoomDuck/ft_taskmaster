@@ -64,7 +64,7 @@ class TaskMaster:
     def task(self, name: str) -> Optional[Task]:
         result = self.tasks.get(name)
         if result is None:
-            self.logger.warn(f"unknown task: \"{name}\"")
+            self.logger.warn(f'unknown task: "{name}"')
         return result
 
     async def run(self):
@@ -78,8 +78,7 @@ class TaskMaster:
         }
 
         running_tasks = [
-            asyncio.create_task(task.run())
-            for task in self.tasks.values()
+            asyncio.create_task(task.run()) for task in self.tasks.values()
         ]
 
         # Handle commands until shutdown
