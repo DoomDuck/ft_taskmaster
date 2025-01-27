@@ -7,7 +7,6 @@ import logging
 
 from signal import Signals
 from task_master import TaskMaster
-from config import Configuration
 from argparse import ArgumentParser, Namespace
 
 
@@ -82,7 +81,10 @@ async def start(arguments: Namespace):
 
     logger = logging.getLogger()
 
-    task_master = TaskMaster(logger, arguments.config_file, )
+    task_master = TaskMaster(
+        logger,
+        arguments.config_file,
+    )
 
     event_loop = asyncio.get_event_loop()
 

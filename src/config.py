@@ -102,22 +102,21 @@ class TaskDescription:
 
     def __eq__(self, other) -> bool:
         return (
-            self.command == other.command and
-            self.replicas == other.replicas and
-            self.start_on_launch == other.start_on_launch and
-            self.restart== other.restart and
-            self.success_exit_codes == other.success_exit_codes and
-            self.start_timeout == other.start_timeout and
-            self.start_attempts == other.start_attempts and
-            self.shutdown_signal == other.shutdown_signal and
-            self.shutdown_timeout == other.shutdown_timeout and
-            self.stdout == other.stdout and
-            self.stderr == other.stderr and
-            self.environment == other.environment and
-            self.pwd == other.pwd and
-            self.umask == other.umask
+            self.command == other.command
+            and self.replicas == other.replicas
+            and self.start_on_launch == other.start_on_launch
+            and self.restart == other.restart
+            and self.success_exit_codes == other.success_exit_codes
+            and self.start_timeout == other.start_timeout
+            and self.start_attempts == other.start_attempts
+            and self.shutdown_signal == other.shutdown_signal
+            and self.shutdown_timeout == other.shutdown_timeout
+            and self.stdout == other.stdout
+            and self.stderr == other.stderr
+            and self.environment == other.environment
+            and self.pwd == other.pwd
+            and self.umask == other.umask
         )
-
 
 
 @dataclass

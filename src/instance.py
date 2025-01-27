@@ -4,12 +4,11 @@ import os
 import asyncio
 import logging
 
+from typing import Any
 from logging import Logger
-from enum import IntEnum
 from signal import Signals
 from datetime import datetime
 from config import TaskDescription, RestartCondition
-from typing import Any, Optional, cast
 from abc import ABC, abstractmethod
 from asyncio.subprocess import Process, create_subprocess_shell
 
@@ -48,6 +47,7 @@ async def create_subprocess(desc: TaskDescription) -> Process:
 
 class Stage(ABC):
     """Absctract base status class for polymorphism."""
+
     desc: TaskDescription
     should_start: asyncio.Event
     should_stop: asyncio.Event
@@ -73,7 +73,7 @@ class Stage(ABC):
         should_stop_task = asyncio.create_task(self.should_stop.wait())
         await asyncio.wait(
             (subprocess_creation, should_stop_task),
-            return_when=asyncio.FIRST_COMPLETED
+            return_when=asyncio.FIRST_COMPLETED,
         )
 
         if not should_stop_task.done():
@@ -91,11 +91,12 @@ class Stage(ABC):
 
     @abstractmethod
     def __repr__(self) -> str:
-        raise NotImplemented
+        raise NotImplementedError()
 
 
 class StageWithProcess(Stage):
     """Stage with a running process attached to it"""
+
     process: Process
 
     def __init__(self, desc: TaskDescription, process: Process):
@@ -111,6 +112,7 @@ class StageWithProcess(Stage):
             self.process.send_signal(signal)
         except ProcessLookupError:
             pass
+
 
 class NotStarted(Stage):
     """Task has not been started yet."""
@@ -130,6 +132,7 @@ class NotStarted(Stage):
 
 class Starting(StageWithProcess):
     """Task is attempting to start."""
+
     attempt: int
     start_time: datetime
 
@@ -155,7 +158,7 @@ class Starting(StageWithProcess):
                 process_stopped,
                 should_stop_task,
             ),
-            return_when=asyncio.FIRST_COMPLETED
+            return_when=asyncio.FIRST_COMPLETED,
         )
 
         if not should_stop_task.done():
@@ -196,8 +199,8 @@ class Running(StageWithProcess):
         process_wait = asyncio.create_task(self.process.wait())
         should_stop_task = asyncio.create_task(self.should_stop.wait())
         await asyncio.wait(
-            ( process_wait, should_stop_task),
-            return_when=asyncio.FIRST_COMPLETED
+            (process_wait, should_stop_task),
+            return_when=asyncio.FIRST_COMPLETED,
         )
 
         if not should_stop_task.done():
@@ -215,10 +218,9 @@ class Running(StageWithProcess):
         if self.should_stop.is_set():
             self.stop()
             return Exiting(self.desc, self.process)
-        
+
         # Conditions are met to restart
         return await self.attempt_start()
-
 
     def __repr__(self) -> str:
         return f"running (pid: {self.process.pid})"
@@ -226,6 +228,7 @@ class Running(StageWithProcess):
 
 class Exiting(StageWithProcess):
     """Task is exciting."""
+
     start_exiting_time: datetime
 
     def __init__(self, desc: TaskDescription, process: Process):
@@ -257,6 +260,7 @@ class Exiting(StageWithProcess):
 
 class Exited(Stage):
     """Task has excited, gracefully or forcefully."""
+
     exit_code: int
 
     def __init__(self, desc: TaskDescription, exit_code: int):
@@ -267,11 +271,13 @@ class Exited(Stage):
         try:
             signal = Signals(-self.exit_code)
             return f"exited by {signal.name}"
-        except:
+        except Exception:
             return f"exited with {self.exit_code}"
+
 
 class Fatal(Stage):
     """Faced a fatal error trying to start."""
+
     exception: Exception
 
     def __init__(self, desc: TaskDescription, exception: Exception):
@@ -285,8 +291,8 @@ class Fatal(Stage):
 class Instance:
     stage: Stage
     shutting_down: bool
-    finished : asyncio.Event
-    logger: logging.Logger 
+    finished: asyncio.Event
+    logger: logging.Logger
 
     def __init__(self, desc: TaskDescription, logger: Logger):
         self.stage = NotStarted(desc)
@@ -326,7 +332,7 @@ class Instance:
             self.logger.info(f"{self.stage}")
             await asyncio.wait(
                 (wait_until_finished, wait_for_next_stage),
-                return_when=asyncio.FIRST_COMPLETED
+                return_when=asyncio.FIRST_COMPLETED,
             )
 
             if wait_for_next_stage.done():
@@ -336,4 +342,3 @@ class Instance:
             self.update_finished()
 
         self.logger.debug("Quitting loop")
-

@@ -3,11 +3,10 @@ import logging
 
 from dataclasses import dataclass
 from instance import Instance
-from enum import IntEnum
 from logging import Logger
-from asyncio.subprocess import Process
-from typing import List, Optional, Any, cast
-from config import Configuration, TaskDescription, RestartCondition
+from typing import List, Optional
+from config import TaskDescription
+
 
 class Command:
     pass
@@ -76,12 +75,12 @@ class Task:
 
     def requires_restart(self, desc: TaskDescription) -> bool:
         return (
-            desc.command != self.desc.command or
-            desc.stdout != self.desc.stdout or
-            desc.stderr != self.desc.stderr or
-            desc.environment != self.desc.environment or
-            desc.pwd != self.desc.pwd or
-            desc.umask != self.desc.umask
+            desc.command != self.desc.command
+            or desc.stdout != self.desc.stdout
+            or desc.stderr != self.desc.stderr
+            or desc.environment != self.desc.environment
+            or desc.pwd != self.desc.pwd
+            or desc.umask != self.desc.umask
         )
 
     async def run(self):
@@ -89,7 +88,7 @@ class Task:
             instance_runs = [
                 asyncio.create_task(instance.run())
                 for instance in self.instances
-            ] 
+            ]
 
             while True:
                 command = await self.command_queue.get()
@@ -106,7 +105,7 @@ class Task:
                         if instance is not None:
                             instance.stop()
                     case Update():
-                        command : Update
+                        command: Update
                         self.logger.debug("updating description")
                         # TODO: update on change
                         if self.requires_restart(command.desc):
@@ -117,18 +116,22 @@ class Task:
                         else:
                             self.logger.info("updating all processes")
 
-                            to_stop = self.instances[command.desc: self.desc.replicas]
+                            to_stop = self.instances[
+                                command.desc: self.desc.replicas
+                            ]
 
                             for instance in to_stop:
                                 instance.shutdown()
 
                             await asyncio.wait(to_stop)
-                            
+
                             self.update_description(command.desc)
 
                             while len(self.instances) < self.desc.replicas:
                                 instance = self.add_instance()
-                                instance_runs.append(asyncio.create_task(instance.run()))
+                                instance_runs.append(
+                                    asyncio.create_task(instance.run())
+                                )
 
                     case Shutdown():
                         self.logger.info("Shutting down")

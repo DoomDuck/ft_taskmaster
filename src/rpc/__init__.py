@@ -1,10 +1,6 @@
 import grpc
 
-import task_master
-import asyncio
-
 from rpc import command_pb2_grpc
-
 from typing import List, AsyncGenerator
 from task_master import TaskMaster
 from rpc.command_pb2 import TaskName, TaskStatus, Empty
@@ -66,14 +62,16 @@ class TaskMasterRunner(RunnerServicer):
         return Empty()
 
     async def restart(self, task_name: TaskName, _context) -> Empty:
-        await self.restart(task_name.name)
+        await self.task_master.restart(task_name.name)
         return Empty()
 
     async def status(self, task_name: TaskName, _context) -> TaskStatus:
         # TODO: Return status
         return NotImplemented
 
-    async def list(self, _arg: Empty, _context) -> AsyncGenerator[TaskName, None]:
+    async def list(
+        self, _arg: Empty, _context
+    ) -> AsyncGenerator[TaskName, None]:
         for name in self.task_master.tasks:
             yield TaskName(name=name)
 

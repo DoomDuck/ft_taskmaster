@@ -5,6 +5,8 @@ import grpc
 import readline
 import platform
 
+from typing import List
+
 
 class Colors:
     RESET = "\033[0m"
@@ -41,7 +43,7 @@ class CompletionEngine:
     def __init__(self, client: rpc.Client):
         self.client = client
 
-    def get_matches(self, prefix: str) -> [str]:
+    def get_matches(self, prefix: str) -> List[str]:
         return [
             task_name
             for task_name in self.client.list()

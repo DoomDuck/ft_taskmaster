@@ -4,11 +4,9 @@ import task
 
 from dataclasses import dataclass
 from task import Task
-from enum import IntEnum
 from logging import Logger
-from asyncio.subprocess import Process
-from typing import List, Optional, Any, cast
-from config import Configuration, TaskDescription, RestartCondition
+from typing import Optional
+from config import Configuration
 
 
 class Command:
@@ -90,7 +88,7 @@ class TaskMaster:
             self.logger.debug(f"Command: {command}")
             match command:
                 case Start():
-                    command : Start
+                    command: Start
                     t = self.task(command.task)
                     if t is not None:
                         # TODO: Give the correct replica
@@ -109,7 +107,7 @@ class TaskMaster:
                 case Reload():
                     command: Reload
                     self.logger.info("Reloading")
-                    new_configuration = Configuration.load(self.config_file)
+                    # new_configuration = Configuration.load(self.config_file)
 
                     # TODO: Check for config differences
 
