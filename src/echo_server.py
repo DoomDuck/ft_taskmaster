@@ -23,6 +23,7 @@ class EchoServer:
             try:
                 # TODO: see why I cannot use server.serve_forever()
                 await server.start_serving()
+
                 await server.wait_closed()
             except asyncio.CancelledError:
                 for task in self.connection_tasks:
@@ -36,11 +37,8 @@ class Connection:
     writer: StreamWriter
 
     def __init__(
-            self,
-            server: EchoServer,
-            reader: StreamReader,
-            writer: StreamWriter
-            ):
+        self, server: EchoServer, reader: StreamReader, writer: StreamWriter
+    ):
         self.server = server
         self.reader = reader
         self.writer = writer

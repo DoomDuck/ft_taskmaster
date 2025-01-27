@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import rpc
+import grpc
 import readline
 import platform
+
+from typing import List
 
 
 class Colors:
@@ -40,7 +43,7 @@ class CompletionEngine:
     def __init__(self, client: rpc.Client):
         self.client = client
 
-    def get_matches(self, prefix: str):
+    def get_matches(self, prefix: str) -> List[str]:
         return [
             task_name
             for task_name in self.client.list()
@@ -51,10 +54,7 @@ class CompletionEngine:
         buffer = readline.get_line_buffer()
         cmd, *cmd_with_args = buffer.split()
         if not cmd_with_args:
-            matches = [
-                cmd for cmd in commands
-                if cmd.startswith(text)
-            ]
+            matches = [cmd for cmd in commands if cmd.startswith(text)]
         elif cmd_with_args:
             matches = self.get_matches(text)
 
@@ -82,9 +82,7 @@ def run(client: rpc.Client):
     while True:
         try:
             command_line = input(
-                Colors.YELLOW +
-                "🔧 Taskmaster\n   ⤷ " +
-                Colors.RESET,
+                Colors.YELLOW + "🔧 Taskmaster\n   ⤷ " + Colors.RESET,
             )
 
             if not command_line:
@@ -98,6 +96,12 @@ def run(client: rpc.Client):
                         client.stop(task)
                     case ["restart", task]:
                         client.restart(task)
+                    case ["status", task]:
+                        status = client.status(task)
+                        print(f"Task is {status}")
+                    case ["list"]:
+                        for task in client.list():
+                            print(task)
                     case ["reload"]:
                         client.reload()
                     case ["shutdown"]:
@@ -106,10 +110,12 @@ def run(client: rpc.Client):
                         break
                     case _:
                         print("Invalid command:", command_line)
+            except grpc.RpcError:
+                print("Server is not responding, is it running ?")
             except Exception as e:
                 print(f"Error running command: {e}")
 
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, EOFError):
             print("\nExiting Taskmaster.")
             break
 

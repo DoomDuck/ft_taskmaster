@@ -1,24 +1,29 @@
-import datetime
+# Allow referencing a class within its own body
+from __future__ import annotations
+
 import yaml
+import schema
+from signal import Signals
 from typing import Optional  # Pour les annotations de type
 from enum import Enum
-from dataclasses import dataclass, field
-from schema import Schema, And, Or, Optional as SchemaOptional, SchemaError
+from dataclasses import dataclass
+from schema import Schema, And, Or, Use
 from datetime import timedelta
 
 
 class RestartCondition(Enum):
     ALWAYS = "always"
     NEVER = "never"
-    ONFAILURE = "onfailure"
+    ON_FAILURE = "on_failure"
 
 
-def default_success_exit_codes() -> set[int]:
-    return set([0])
-
-
-class Signal(str):
-    pass
+PositiveInt = And(int, lambda n: 0 <= n)
+StriclyPositiveInt = And(int, lambda n: 0 < n)
+Signal = Use(Signals.__getitem__)
+RestartSchema = Use(RestartCondition)
+Path = str
+Environment = Or({str: str})
+Umask = And(str, Use(lambda u: int(u, base=8)))
 
 
 @dataclass
@@ -41,104 +46,102 @@ class TaskDescription:
     - The working directory
     - The umask used by the program
     """
+
     command: str
-    replicas: int = 1
-    start_on_launch: bool = True
-    restart: RestartCondition = RestartCondition.ONFAILURE
-    success_exit_codes: set[int] = \
-        field(default_factory=default_success_exit_codes)
-    success_start_delay: timedelta = timedelta(seconds=1)
-    restart_attempts: int = 3
-    # TODO(Dorian): Make the `Signal` class
-    gracefull_shutdown_signal: Optional[Signal] = None
-    gracefull_shutdown_success_delay: timedelta = timedelta(seconds=3)
-    stdout: Optional[str] = None
-    stderr: Optional[str] = None
-    environment: dict[str, str] = field(default_factory=dict)
-    pwd: Optional[str] = None
-    umask: Optional[int] = None
+    replicas: int
+    start_on_launch: bool
+    restart: RestartCondition
+    success_exit_codes: set[int]
+    start_timeout: timedelta
+    start_attempts: int
+    shutdown_signal: Optional[Signals]
+    shutdown_timeout: timedelta
+    stdout: Optional[str]
+    stderr: Optional[str]
+    environment: dict[str, str]
+    pwd: Optional[str]
+    umask: Optional[int]
+
+    schema = Schema(
+        {
+            "command": str,
+            schema.Optional("replicas"): StriclyPositiveInt,
+            schema.Optional("start_on_launch"): bool,
+            schema.Optional("restart"): RestartSchema,
+            schema.Optional("success_exit_codes"): [int],
+            schema.Optional("start_timeout"): PositiveInt,
+            schema.Optional("start_attempts"): StriclyPositiveInt,
+            schema.Optional("shutdown_signal"): Signal,
+            schema.Optional("shutdown_timeout"): PositiveInt,
+            schema.Optional("stdout"): Path,
+            schema.Optional("stderr"): Path,
+            schema.Optional("environment"): Environment,
+            schema.Optional("pwd"): Path,
+            schema.Optional("umask"): Umask,
+        }
+    )
+
+    @staticmethod
+    def build(d: dict) -> TaskDescription:
+        return TaskDescription(
+            command=d["command"],
+            replicas=d.get("replicas", 1),
+            start_on_launch=d.get("start_on_launch", True),
+            restart=RestartCondition(d.get("restart", "on_failure")),
+            success_exit_codes=set(d.get("success_exit_codes", [0])),
+            start_timeout=timedelta(seconds=d.get("start_timeout", 3)),
+            start_attempts=d.get("start_attempts", 3),
+            shutdown_signal=Signals[d.get("shutdown_signal", "SIGINT")],
+            shutdown_timeout=timedelta(seconds=d.get("shutdown_timeout", 10)),
+            stdout=d.get("stdout"),
+            stderr=d.get("stderr"),
+            environment=d.get("environment", {}),
+            pwd=d.get("pwd"),
+            umask=int(d.get("umask", "644"), base=8),
+        )
+
+    def __eq__(self, other) -> bool:
+        return (
+            self.command == other.command
+            and self.replicas == other.replicas
+            and self.start_on_launch == other.start_on_launch
+            and self.restart == other.restart
+            and self.success_exit_codes == other.success_exit_codes
+            and self.start_timeout == other.start_timeout
+            and self.start_attempts == other.start_attempts
+            and self.shutdown_signal == other.shutdown_signal
+            and self.shutdown_timeout == other.shutdown_timeout
+            and self.stdout == other.stdout
+            and self.stderr == other.stderr
+            and self.environment == other.environment
+            and self.pwd == other.pwd
+            and self.umask == other.umask
+        )
 
 
 @dataclass
 class Configuration:
     tasks: dict[str, TaskDescription]
 
-
-def load(filename: str) -> Configuration:
-    return Configuration(
-        read_and_parse_yaml(filename)
+    schema = Schema(
+        {
+            "tasks": {str: Schema(TaskDescription.schema)},
+        }
     )
 
+    @staticmethod
+    def build(d: dict) -> Configuration:
+        tasks = {}
+        for name, desc in d["tasks"].items():
+            tasks[name] = TaskDescription.build(desc)
+        return Configuration(tasks)
 
-program_schema = Schema({
-    'command': str,
-    SchemaOptional('replicas'): And(int, lambda n: n > 0),
-    SchemaOptional('start_on_launch'): bool,
-    # TODO: factorize condition
-    SchemaOptional('restart'):
-        And(str, lambda s: s in ['always', 'never', 'onfailure']),
-    SchemaOptional('success_exit_codes'): [int],
-    SchemaOptional('success_start_delay'): And(int, lambda n: n >= 0),
-    SchemaOptional('restart_attempts'): And(int, lambda n: n >= 0),
-    SchemaOptional('gracefull_shutdown_signal'): str,
-    SchemaOptional('gracefull_shutdown_success_delay'):
-        And(int, lambda n: n >= 0),
-    SchemaOptional('stdout'): str,
-    SchemaOptional('stderr'): str,
-    SchemaOptional('environment'): Or([str], None, []),
-    SchemaOptional('pwd'): str,
-    SchemaOptional('umask'): str
-})
+    @staticmethod
+    def load(file_path: str) -> Configuration:
+        with open(file_path, "r") as file:
+            data_dictionnary = yaml.load(file, Loader=yaml.SafeLoader)
+        Configuration.schema.validate(data_dictionnary)
+        return Configuration.build(data_dictionnary)
 
-
-main_schema = Schema({
-    'programs': And(
-        {str: Schema(program_schema)},  # Validation des programmes
-        lambda d: len(d) > 0  # S'assurer qu'il y a au moins un programme
-    )
-})
-
-
-def parse_configuration(program_data: dict) -> TaskDescription:
-    return TaskDescription(
-        # TODO Complain on missing command
-        command=program_data.get('command', ""),
-        replicas=program_data.get('replicas', 1),
-        start_on_launch=program_data.get('start_on_launch', True),
-        restart=RestartCondition(program_data.get('restart', 'always')),
-        success_exit_codes=program_data.get('success_exit_codes', [0]),
-        success_start_delay=datetime.timedelta(
-            seconds=program_data.get('success_start_delay', 0)),
-        restart_attempts=program_data.get('restart_attempts', 3),
-        gracefull_shutdown_signal=Signal(
-            program_data.get('gracefull_shutdown_signal', 'SIGTERM').upper()),
-        gracefull_shutdown_success_delay=datetime.timedelta(
-            seconds=program_data.get('gracefull_shutdown_success_delay', 10)),
-        stdout=program_data.get('stdout'),
-        stderr=program_data.get('stderr'),
-        environment=program_data.get('environment', []),
-        pwd=program_data.get('pwd', '/'),
-        umask=program_data.get('umask', '0644')
-    )
-
-
-def read_and_parse_yaml(filename: str) -> dict[str, TaskDescription]:
-    try:
-        with open(filename, 'r') as f:
-            data = yaml.load(f, Loader=yaml.SafeLoader)
-        main_schema.validate(data)
-        configuration_from_yaml = data.get('programs', {})
-        configuration_dict = {}
-        for task_name, task in configuration_from_yaml.items():
-            configuration_dict[task_name] = parse_configuration(task)
-        return configuration_dict
-
-    except (FileNotFoundError, IOError):
-        print(f"Error : '{filename}.yaml' not found")
-    except SchemaError as e:
-        print("Error Validation schema YAML:", e)
-    except ValueError as e:
-        print("Value Errro in this yaml file:", e)
-    except Exception as e:
-        print("Unexpected error:", e)
-    return {}
+    def __eq__(self, other) -> bool:
+        return self.tasks == other.tasks

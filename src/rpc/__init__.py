@@ -1,10 +1,9 @@
 import grpc
 
 from rpc import command_pb2_grpc
-
 from typing import List, AsyncGenerator
-from runner import TaskMaster
-from rpc.command_pb2 import TaskName, Empty
+from task_master import TaskMaster
+from rpc.command_pb2 import TaskName, TaskStatus, Empty
 from rpc.command_pb2_grpc import RunnerStub, RunnerServicer
 
 DEFAULT_PORT: int = 50051
@@ -27,10 +26,12 @@ class Client:
         self.stub.restart(TaskName(name=task))
 
     def list(self) -> List[str]:
-        return list(map(
-            lambda task_name: task_name.name,
-            self.stub.list(Empty())
-        ))
+        return list(
+            map(lambda task_name: task_name.name, self.stub.list(Empty()))
+        )
+
+    def status(self, task: str) -> str:
+        return self.stub.status(TaskName(name=task)).status
 
     def reload(self):
         self.stub.reload(Empty())
@@ -42,51 +43,44 @@ class Client:
         return self
 
     def __exit__(self, type, value, traceback):
+        # TODO: remove
         self.channel.close()
 
 
 class TaskMasterRunner(RunnerServicer):
     task_master: TaskMaster
 
-    def __init__(self, task_master):
+    def __init__(self, task_master: TaskMaster):
         self.task_master = task_master
 
     async def start(self, task_name: TaskName, _context) -> Empty:
-        try:
-            await self.task_master.tasks[task_name.name].start()
-        except Exception:
-            # TODO(Dorian): Handle Exception
-            pass
+        await self.task_master.start(task_name.name)
         return Empty()
 
     async def stop(self, task_name: TaskName, _context) -> Empty:
-        try:
-            await self.task_master.tasks[task_name.name].graceful_shutdown()
-        except Exception:
-            # TODO(Dorian): Handle Exception
-            pass
+        await self.task_master.stop(task_name.name)
         return Empty()
 
     async def restart(self, task_name: TaskName, _context) -> Empty:
-        try:
-            await self.task_master.tasks[task_name.name].graceful_shutdown()
-            await self.task_master.tasks[task_name.name].start()
-        except Exception:
-            # TODO(Dorian): Handle Exception
-            pass
+        await self.task_master.restart(task_name.name)
         return Empty()
 
-    # TODO(Dorian): Add return type
-    async def list(self, _arg: Empty, _context) -> AsyncGenerator[TaskName, None]:
+    async def status(self, task_name: TaskName, _context) -> TaskStatus:
+        # TODO: Return status
+        return NotImplemented
+
+    async def list(
+        self, _arg: Empty, _context
+    ) -> AsyncGenerator[TaskName, None]:
         for name in self.task_master.tasks:
             yield TaskName(name=name)
 
     async def reload(self, _arg: Empty, _context) -> Empty:
-        print("reload")
+        await self.task_master.reload()
         return Empty()
 
     async def shutdown(self, _arg: Empty, _context) -> Empty:
-        print("shutdown")
+        await self.task_master.shutdown()
         return Empty()
 
 

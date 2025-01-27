@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 
 import os
+import rpc
 import asyncio
 import logging
-import config
 
-import rpc
-from echo_server import EchoServer
+from signal import Signals
+from task_master import TaskMaster
 from argparse import ArgumentParser, Namespace
-from runner import TaskMaster
 
 
-cla = ArgumentParser(
-    description='sum the integers at the command line')
+cla = ArgumentParser(description="sum the integers at the command line")
 
 cla.add_argument(
     "config_file",
@@ -21,13 +19,7 @@ cla.add_argument(
     default="./configs/default.yaml",
 )
 
-cla.add_argument(
-    "-l",
-    "--log-file",
-    type=str,
-    help="Log file",
-    default=None
-)
+cla.add_argument("-l", "--log-file", type=str, help="Log file", default=None)
 
 cla.add_argument(
     "-p",
@@ -45,6 +37,26 @@ cla.add_argument(
 )
 
 
+cla.add_argument(
+    "-L",
+    "--log-level",
+    type=str,
+    choices=logging.getLevelNamesMapping().keys(),
+    help="log level",
+    default="INFO",
+)
+
+
+def raise_exception_if_root_user():
+    "Check if user is root."
+    if os.geteuid() == 0:
+        # fmt: off
+        raise Exception("""
+            Taskmaster being run as root /!\\
+            To allow use the `--allow-root` flag
+        """)
+
+
 def main():
     "Program entry point"
 
@@ -52,50 +64,55 @@ def main():
 
     logging.basicConfig(
         filename=arguments.log_file,
-        level=logging.INFO,
+        level=arguments.log_level,
+        format="[%(levelname)s] %(name)s: %(message)s",
     )
 
     try:
         asyncio.run(start(arguments))
-    except KeyboardInterrupt:
-        pass
     except Exception as exception:
         logging.error(f"Error starting: {exception}")
 
 
-def raise_exception_if_root_user():
-    "Check if user is root."
-    if os.geteuid() == 0:
-        raise Exception("""
-            Taskmaster being run as root /!\\
-            To allow use the `--allow-root` flag
-        """)
-
-
 async def start(arguments: Namespace):
-
-    # Forbid use from being root
+    # Forbid use root user
     if not arguments.allow_root:
         raise_exception_if_root_user()
 
-    try:
-        configuration = config.load(arguments.config_file)
-    except Exception as e:
-        logging.error(f"Could not load configuration: {e}")
-        return
+    logger = logging.getLogger()
 
-    task_master = TaskMaster(configuration)
-    echo_server = EchoServer(task_master)
+    task_master = TaskMaster(
+        logger,
+        arguments.config_file,
+    )
+
+    event_loop = asyncio.get_event_loop()
+
+    def on_sigint():
+        event_loop.create_task(task_master.shutdown())
+
+    def on_sigusr1():
+        event_loop.create_task(task_master.reload())
+
+    event_loop.add_signal_handler(Signals.SIGINT, on_sigint)
+    event_loop.add_signal_handler(Signals.SIGUSR1, on_sigusr1)
+
     rpc_server = rpc.Server(task_master)
 
-    try:
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(task_master.run())
-            tg.create_task(echo_server.serve(4242))
-            tg.create_task(rpc_server.serve(arguments.port))
-    except ExceptionGroup as exception_group:
-        for exception in exception_group.exceptions:
-            logging.error(exception)
+    task_master_wait = event_loop.create_task(task_master.run())
+    serve_rpc = event_loop.create_task(rpc_server.serve(arguments.port))
+    (done, pending) = await asyncio.wait(
+        (task_master_wait, serve_rpc),
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+
+    if not task_master_wait.done():
+        task_master_wait.cancel()
+
+    if not serve_rpc.done():
+        serve_rpc.cancel()
+
+    await asyncio.wait(pending)
 
 
 if __name__ == "__main__":

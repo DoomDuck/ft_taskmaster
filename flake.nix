@@ -8,17 +8,22 @@
     pkgs = nixpkgs.legacyPackages.${system};
   in {
     devShells.${system}.default = pkgs.mkShell {
-      name = "grpc";
+      name = "taskmaster";
       buildInputs = [
         (pkgs.python3.withPackages (p: with p; [
+          # Yaml with types
           pyyaml
           types-pyyaml
-
-          pytest
-          flake8
-          mypy
+          
+          # Structure check
           schema
 
+          pytest # Testing
+          flake8 # Linting
+          mypy   # Typecheck
+          black  # Formatter
+
+          # Protobuf with types
           grpcio-tools
           types-protobuf
         ]))
