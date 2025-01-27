@@ -120,7 +120,9 @@ class TaskMaster:
 
                     for name in to_shutdown:
                         self.logger.debug(f"Shutting down {name}")
-                        await self.tasks[name].command_queue.put(task.Shutdown())
+                        await self.tasks[name].command_queue.put(
+                            task.Shutdown()
+                        )
                         tasks_shutting_down.append(running_tasks[name])
 
                     for name in to_update:
@@ -130,8 +132,12 @@ class TaskMaster:
 
                     for name in to_start:
                         self.logger.debug(f"Starting {name}")
-                        logger = logging.getLogger(f"{self.logger.name}:{name}")
-                        self.tasks[name] = Task(logger, new_configuration.tasks[name]) 
+                        logger = logging.getLogger(
+                            f"{self.logger.name}:{name}"
+                        )
+                        self.tasks[name] = Task(
+                            logger, new_configuration.tasks[name]
+                        )
 
                     if len(tasks_shutting_down) != 0:
                         await asyncio.wait(tasks_shutting_down)

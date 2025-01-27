@@ -85,8 +85,7 @@ class Task:
 
     async def run(self):
         instance_runs = [
-            asyncio.create_task(instance.run())
-            for instance in self.instances
+            asyncio.create_task(instance.run()) for instance in self.instances
         ]
         while not self.shutting_down:
             while True:
