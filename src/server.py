@@ -106,10 +106,18 @@ async def start(arguments: Namespace):
         return_when=asyncio.FIRST_COMPLETED,
     )
 
-    if not task_master_wait.done():
+    if task_master_wait.done():
+        exception = task_master_wait.exception()
+        if exception is not None:
+            logger.error(f"{exception}")
+    else:
         task_master_wait.cancel()
 
-    if not serve_rpc.done():
+    if serve_rpc.done():
+        exception = serve_rpc.exception()
+        if exception is not None:
+            logger.error(f"{exception}")
+    else:
         serve_rpc.cancel()
 
     await asyncio.wait(pending)

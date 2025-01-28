@@ -64,11 +64,11 @@ class TaskMaster:
     def task(self, name: str) -> Optional[Task]:
         result = self.tasks.get(name)
         if result is None:
-            self.logger.warn(f'unknown task: "{name}"')
+            self.logger.warn(f'Unknown task: "{name}"')
         return result
 
     async def run(self):
-        self.logger.info("Starting taskmaster")
+        self.logger.info("Starting")
 
         configuration = Configuration.load(self.config_file)
 
@@ -77,9 +77,10 @@ class TaskMaster:
             for name, desc in configuration.tasks.items()
         }
 
-        running_tasks = [
-            asyncio.create_task(task.run()) for task in self.tasks.values()
-        ]
+        running_tasks = {
+            name: asyncio.create_task(task.run())
+            for name, task in self.tasks.items()
+        }
 
         # Handle commands until shutdown
         while True:
@@ -93,7 +94,7 @@ class TaskMaster:
                         # TODO: Give the correct replica
                         await t.command_queue.put(task.Start(1))
                     else:
-                        self.logger.warn(f"unknown {command.task}")
+                        self.logger.warn(f'Unknown "{command.task}"')
                 case Stop():
                     command: Stop
                     t = self.task(command.task)
@@ -101,14 +102,63 @@ class TaskMaster:
                         # TODO: Give the correct replica
                         await t.command_queue.put(task.Stop(1))
                     else:
-                        self.logger.warn(f"unknown task {command.task}")
+                        self.logger.warn(f'Unknown task "{command.task}"')
+                        continue
 
                 case Reload():
                     command: Reload
                     self.logger.info("Reloading")
-                    # new_configuration = Configuration.load(self.config_file)
 
-                    # TODO: Check for config differences
+                    try:
+                        new_configuration = Configuration.load(self.config_file)
+                    except Exception as e:
+                        self.logger.error(f"skipping update, could not load config: {e}")
+                        continue
+
+
+                    previous_tasks = set(configuration.tasks.keys())
+                    new_tasks = set(new_configuration.tasks.keys())
+
+                    to_shutdown = previous_tasks.difference(new_tasks)
+                    to_update = previous_tasks.intersection(new_tasks)
+                    to_start = new_tasks.difference(previous_tasks)
+
+                    tasks_shutting_down = []
+
+                    for name in to_shutdown:
+                        self.logger.debug(f"Shutting down {name}")
+                        await self.tasks[name].command_queue.put(
+                            task.Shutdown()
+                        )
+                        tasks_shutting_down.append(running_tasks[name])
+
+                    for name in to_update:
+                        self.logger.debug(f"Updating {name}")
+                        command = task.Update(new_configuration.tasks[name])
+                        await self.tasks[name].command_queue.put(command)
+
+                    for name in to_start:
+                        self.logger.debug(f"Starting {name}")
+                        logger = logging.getLogger(
+                            f"{self.logger.name}:{name}"
+                        )
+                        self.tasks[name] = Task(
+                            logger, new_configuration.tasks[name]
+                        )
+
+                    if len(tasks_shutting_down) != 0:
+                        await asyncio.wait(tasks_shutting_down)
+
+                    for name in to_shutdown:
+                        del self.tasks[name]
+                        del running_tasks[name]
+
+                    for name in to_start:
+                        running_tasks[name] = asyncio.create_task(
+                            self.tasks[name].run()
+                        )
+
+                    configuration = new_configuration
 
                 case Shutdown():
                     self.logger.info("Shutting down")
@@ -117,4 +167,4 @@ class TaskMaster:
                     break
 
         self.logger.debug("Waiting for tasks to return")
-        await asyncio.wait(running_tasks)
+        await asyncio.wait(list(running_tasks.values()))

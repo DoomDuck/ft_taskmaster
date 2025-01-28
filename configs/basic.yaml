@@ -1,3 +1,7 @@
 tasks:
     do_nothing:
-        command: "sleep infinity"
+      # command: "sleep 3s"
+      command: "sleep infinity"
+    hello:
+      command: "echo hello"
+      replicas: 1
