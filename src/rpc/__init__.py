@@ -16,22 +16,22 @@ class Client:
         self.channel = grpc.insecure_channel(f"{address}:{port}")
         self.stub = RunnerStub(self.channel)
 
-    def start(self, task: str, instance_ids: List[int] = []):
-        self.stub.start(Target(name=task, instance_id=instance_ids))
+    def start(self, task: str, instances: List[int] = []):
+        self.stub.start(Target(name=task, instances=instances))
 
-    def stop(self, task: str,  instance_ids: List[int] = [] ):
-        self.stub.stop(Target(name=task, instance_id=instance_ids))
+    def stop(self, task: str,  instances: List[int] = []):
+        self.stub.stop(Target(name=task, instances=instances))
 
-    def restart(self, task: str):
-        self.stub.restart(Target(name=task))
+    def restart(self, task: str, instances: List[int] = []):
+        self.stub.restart(Target(name=task, instances=instances))
 
     def list(self) -> List[str]:
         return list(
             map(lambda target: target.name, self.stub.list(Empty()))
         )
 
-    def status(self, task: str) -> str:
-        return self.stub.status(Target(name=task)).status
+    def status(self, task: str, intances: List[int]) -> str:
+        return self.stub.status(Target(name=task, instances=intances)).status
 
     def reload(self):
         self.stub.reload(Empty())
@@ -54,20 +54,36 @@ class TaskMasterRunner(RunnerServicer):
         self.task_master = task_master
 
     async def start(self, target: Target, _context) -> Empty:
-        await self.task_master.start(target.name, target.instance_id)
+        await self.task_master.start(target.name, target.instances)
         return Empty()
 
     async def stop(self, target: Target, _context) -> Empty:
-        await self.task_master.stop(target.name, target.instance_id)
+        await self.task_master.stop(target.name, target.instances)
         return Empty()
 
     async def restart(self, target: Target, _context) -> Empty:
-        await self.task_master.restart(target.name, target.instance_id)
+        await self.task_master.restart(target.name, target.instances)
         return Empty()
 
     async def status(self, target: Target, _context) -> TaskStatus:
-        # TODO: Return status
-        return NotImplemented
+        messages = []
+        task = self.task_master.task(target.name)
+        if task is None:
+            return TaskStatus(status=f"unknown task {target.name}")
+
+        to_report = target.instances
+        if len(to_report) == 0:
+            to_report = range(1, len(task.instances) + 1)
+
+        for id in to_report:
+            instance = task.instance(id)
+            if instance is None:
+                messages.append(f"{id}: inexistent")
+            else:
+                messages.append(f"{id}: {instance.stage}")
+
+        return TaskStatus(status=", ".join(messages))
+
 
     async def list(
         self, _arg: Empty, _context

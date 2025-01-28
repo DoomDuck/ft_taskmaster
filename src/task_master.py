@@ -5,7 +5,7 @@ import task
 from dataclasses import dataclass
 from task import Task
 from logging import Logger
-from typing import Optional
+from typing import Optional, List
 from config import Configuration
 
 
@@ -22,15 +22,21 @@ class Shutdown(Command):
 
 
 @dataclass
-class Stop(Command):
+class Start(Command):
     task: str
-    instance_ids: list[int]
+    instances: List[int]
 
 
 @dataclass
-class Start(Command):
+class Stop(Command):
     task: str
-    instance_ids: list[int]
+    instances: List[int]
+
+
+@dataclass
+class Restart(Command):
+    task: str
+    instances: List[int]
 
 class TaskMaster:
     config_file: str
@@ -44,16 +50,14 @@ class TaskMaster:
         self.command_queue = asyncio.Queue()
         self.logger = logger
 
-    async def start(self, name: str, instance_ids: list[int]):
-        await self.command_queue.put(Start(name, instance_ids))
+    async def start(self, name: str, instances: List[int]):
+        await self.command_queue.put(Start(name, instances))
 
-    async def stop(self, name: str,  instance_ids: list[int]):
-        await self.command_queue.put(Stop(name, instance_ids))
+    async def stop(self, name: str,  instances: List[int]):
+        await self.command_queue.put(Stop(name, instances))
 
-    async def restart(self, name: str,  instance_ids: list[int]):
-        #TODO - Implement restart with instance_ids
-        await self.command_queue.put(Start(name, instance_ids))
-        await self.command_queue.put(Stop(name, instance_ids))
+    async def restart(self, name: str,  instances: List[int]):
+        await self.command_queue.put(Restart(name, instances))
 
     async def reload(self):
         await self.command_queue.put(Reload())
@@ -91,8 +95,9 @@ class TaskMaster:
                     command: Start
                     t = self.task(command.task)
                     if t is not None:
-                        instance_ids = command.instance_ids if len(command.instance_ids) != 0 else list(range(1, t.desc.replicas + 1))
-                        for instance_id in instance_ids:
+                        if len(command.instances) == 0:
+                            command.instances = list(range(1, t.desc.replicas + 1))
+                        for instance_id in command.instances:
                             await t.command_queue.put(task.Start(instance_id))
                     else:
                         self.logger.warn(f'Unknown "{command.task}"')
@@ -100,9 +105,22 @@ class TaskMaster:
                     command: Stop
                     t = self.task(command.task)
                     if t is not None:
-                        instance_ids = command.instance_ids if len(command.instance_ids) != 0 else list(range(1, t.desc.replicas + 1))
-                        for instance_id in instance_ids:
+                        if len(command.instances) == 0:
+                            command.instances = list(range(1, t.desc.replicas + 1))
+                        for instance_id in command.instances :
                             await t.command_queue.put(task.Stop(instance_id))
+                    else:
+                        self.logger.warn(f'Unknown task "{command.task}"')
+                        continue
+
+                case Restart():
+                    command: Stop
+                    t = self.task(command.task)
+                    if t is not None:
+                        if len(command.instances) == 0:
+                            command.instances = list(range(1, t.desc.replicas + 1))
+                        for instance_id in command.instances :
+                            await t.command_queue.put(task.Restart(instance_id))
                     else:
                         self.logger.warn(f'Unknown task "{command.task}"')
                         continue
@@ -169,4 +187,6 @@ class TaskMaster:
                     break
 
         self.logger.debug("Waiting for tasks to return")
-        await asyncio.wait(list(running_tasks.values()))
+        to_wait = list(running_tasks.values())
+        if len(to_wait) != 0:
+            await asyncio.wait(to_wait)

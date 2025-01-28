@@ -16,7 +16,7 @@ service Runner {
 
 message Target {
   string name = 1;
-  repeated uint32 instance_id = 2;
+  repeated uint32 instances = 2;
 }
 
 message TaskStatus {

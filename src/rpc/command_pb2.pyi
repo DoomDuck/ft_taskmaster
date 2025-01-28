@@ -8,12 +8,12 @@ from google.protobuf.empty_pb2 import Empty as Empty
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class Target(_message.Message):
-    __slots__ = ("name", "instance_id")
+    __slots__ = ("name", "instances")
     NAME_FIELD_NUMBER: _ClassVar[int]
-    INSTANCE_ID_FIELD_NUMBER: _ClassVar[int]
+    INSTANCES_FIELD_NUMBER: _ClassVar[int]
     name: str
-    instance_id: _containers.RepeatedScalarFieldContainer[int]
-    def __init__(self, name: _Optional[str] = ..., instance_id: _Optional[_Iterable[int]] = ...) -> None: ...
+    instances: _containers.RepeatedScalarFieldContainer[int]
+    def __init__(self, name: _Optional[str] = ..., instances: _Optional[_Iterable[int]] = ...) -> None: ...
 
 class TaskStatus(_message.Message):
     __slots__ = ("status",)
