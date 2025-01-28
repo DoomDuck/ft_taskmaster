@@ -3,7 +3,7 @@ import grpc
 from rpc import command_pb2_grpc
 from typing import List, AsyncGenerator
 from task_master import TaskMaster
-from rpc.command_pb2 import TaskName, TaskStatus, Empty
+from rpc.command_pb2 import Target, TaskStatus, Empty
 from rpc.command_pb2_grpc import RunnerStub, RunnerServicer
 
 DEFAULT_PORT: int = 50051
@@ -16,22 +16,22 @@ class Client:
         self.channel = grpc.insecure_channel(f"{address}:{port}")
         self.stub = RunnerStub(self.channel)
 
-    def start(self, task: str):
-        self.stub.start(TaskName(name=task))
+    def start(self, task: str, instance_ids: List[int] = []):
+        self.stub.start(Target(name=task, instance_id=instance_ids))
 
-    def stop(self, task: str):
-        self.stub.stop(TaskName(name=task))
+    def stop(self, task: str,  instance_ids: List[int] = [] ):
+        self.stub.stop(Target(name=task, instance_id=instance_ids))
 
     def restart(self, task: str):
-        self.stub.restart(TaskName(name=task))
+        self.stub.restart(Target(name=task))
 
     def list(self) -> List[str]:
         return list(
-            map(lambda task_name: task_name.name, self.stub.list(Empty()))
+            map(lambda target: target.name, self.stub.list(Empty()))
         )
 
     def status(self, task: str) -> str:
-        return self.stub.status(TaskName(name=task)).status
+        return self.stub.status(Target(name=task)).status
 
     def reload(self):
         self.stub.reload(Empty())
@@ -53,27 +53,27 @@ class TaskMasterRunner(RunnerServicer):
     def __init__(self, task_master: TaskMaster):
         self.task_master = task_master
 
-    async def start(self, task_name: TaskName, _context) -> Empty:
-        await self.task_master.start(task_name.name)
+    async def start(self, target: Target, _context) -> Empty:
+        await self.task_master.start(target.name, target.instance_id)
         return Empty()
 
-    async def stop(self, task_name: TaskName, _context) -> Empty:
-        await self.task_master.stop(task_name.name)
+    async def stop(self, target: Target, _context) -> Empty:
+        await self.task_master.stop(target.name, target.instance_id)
         return Empty()
 
-    async def restart(self, task_name: TaskName, _context) -> Empty:
-        await self.task_master.restart(task_name.name)
+    async def restart(self, target: Target, _context) -> Empty:
+        await self.task_master.restart(target.name, target.instance_id)
         return Empty()
 
-    async def status(self, task_name: TaskName, _context) -> TaskStatus:
+    async def status(self, target: Target, _context) -> TaskStatus:
         # TODO: Return status
         return NotImplemented
 
     async def list(
         self, _arg: Empty, _context
-    ) -> AsyncGenerator[TaskName, None]:
+    ) -> AsyncGenerator[Target, None]:
         for name in self.task_master.tasks:
-            yield TaskName(name=name)
+            yield Target(name=name)
 
     async def reload(self, _arg: Empty, _context) -> Empty:
         await self.task_master.reload()

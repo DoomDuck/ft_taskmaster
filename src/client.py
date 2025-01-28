@@ -4,9 +4,8 @@ import rpc
 import grpc
 import readline
 import platform
-
 from typing import List
-
+HISTORY_FILE  = ".taskmaster_history"
 
 class Colors:
     RESET = "\033[0m"
@@ -17,29 +16,22 @@ class Colors:
     MAGENTA = "\033[35m"
     CYAN = "\033[36m"
     WHITE = "\033[37m"
-
-
-HISTORY_FILE = "taskmaster_history.log"
-
-
-try:
-    readline.read_history_file(HISTORY_FILE)
-except FileNotFoundError:
-    pass
-
-
 commands = [
     "start",
     "stop",
     "restart",
     "status",
     "reload",
+    "list",
+    "shutdown",
+    "quit",
 ]
 
+def printError(message: str, arg: [str] = ""):
+    print(f"{Colors.RED}{message} {arg}{Colors.RESET}")
 
 class CompletionEngine:
     client: rpc.Client
-
     def __init__(self, client: rpc.Client):
         self.client = client
 
@@ -50,31 +42,31 @@ class CompletionEngine:
             if task_name.startswith(prefix)
         ]
 
+    def get_instance_ids(self, task_name: str, prefix: str) -> List[str]:
+        instances = self.client.listInstances(task_name)
+        print("instance:", instances)
+        return instances
+
     def __call__(self, text: str, state):
         buffer = readline.get_line_buffer()
-        cmd, *cmd_with_args = buffer.split()
-        if not cmd_with_args:
+        tokens = buffer.split()
+        current_token = len(tokens)
+        if buffer.endswith(' '):
+            current_token += 1
+
+        matches = []
+        if current_token <= 1:  # Completing command
             matches = [cmd for cmd in commands if cmd.startswith(text)]
-        elif cmd_with_args:
+        elif current_token == 2:  # Completing process name
             matches = self.get_matches(text)
+        elif current_token == 3:  # Completing instance ID
+            if len(tokens) > 1:
+                matches = self.get_instance_ids(tokens[1], text)
 
         if state < len(matches):
             return matches[state]
         else:
             return None
-
-
-def setup(client: rpc.Client):
-    try:
-        completion_engine = CompletionEngine(client)
-        readline.set_completer(completion_engine)
-        if platform.system() == "Darwin":
-            readline.parse_and_bind("bind ^I rl_complete")  # on MacOS 🥶
-        else:
-            readline.parse_and_bind("tab: complete")
-    except Exception as e:
-        print(f"Could not setup readline: {e}")
-
 
 def run(client: rpc.Client):
     setup(client)
@@ -89,15 +81,16 @@ def run(client: rpc.Client):
                 continue
 
             try:
-                match command_line.split():
-                    case ["start", task]:
-                        client.start(task)
-                    case ["stop", task]:
-                        client.stop(task)
-                    case ["restart", task]:
-                        client.restart(task)
-                    case ["status", task]:
-                        status = client.status(task)
+                tokens = command_line.split()
+                match tokens:
+                    case ["start", task, *instance_ids]:
+                        client.start(task, list(map(int, instance_ids)))
+                    case ["stop", task, *instance_ids]:
+                        client.stop(task, list(map(int, instance_ids)))
+                    case ["restart", task, *instance_ids]:
+                        client.restart(task,  list(map(int, instance_ids)))
+                    case ["status", task, *instance_ids]:
+                        status = client.status(task,  list(map(int, instance_ids)))
                         print(f"Task is {status}")
                     case ["list"]:
                         for task in client.list():
@@ -109,17 +102,28 @@ def run(client: rpc.Client):
                     case ["quit"]:
                         break
                     case _:
-                        print("Invalid command:", command_line)
+                       printError("Invalid command:", command_line)
             except grpc.RpcError:
-                print("Server is not responding, is it running ?")
+                printError("Server is not responding, is it running ?")
             except Exception as e:
-                print(f"Error running command: {e}")
+                printError("Error running command: ", e)
 
         except (KeyboardInterrupt, EOFError):
             print("\nExiting Taskmaster.")
             break
 
     readline.write_history_file(HISTORY_FILE)
+
+def setup(client: rpc.Client):
+    try:
+        completion_engine = CompletionEngine(client)
+        readline.set_completer(completion_engine)
+        if platform.system() == "Darwin":
+            readline.parse_and_bind("bind ^I rl_complete")  # on MacOS 🥶
+        else:
+            readline.parse_and_bind("tab: complete")
+    except Exception as e:
+        print(f"Could not setup readline: {e}")
 
 
 def main():

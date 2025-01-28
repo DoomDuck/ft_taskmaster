@@ -24,14 +24,13 @@ class Shutdown(Command):
 @dataclass
 class Stop(Command):
     task: str
-    pass
+    instance_ids: list[int]
 
 
 @dataclass
 class Start(Command):
     task: str
-    pass
-
+    instance_ids: list[int]
 
 class TaskMaster:
     config_file: str
@@ -45,15 +44,16 @@ class TaskMaster:
         self.command_queue = asyncio.Queue()
         self.logger = logger
 
-    async def start(self, name: str):
-        await self.command_queue.put(Start(name))
+    async def start(self, name: str, instance_ids: list[int]):
+        await self.command_queue.put(Start(name, instance_ids))
 
-    async def stop(self, name: str):
-        await self.command_queue.put(Stop(name))
+    async def stop(self, name: str,  instance_ids: list[int]):
+        await self.command_queue.put(Stop(name, instance_ids))
 
-    async def restart(self, name: str):
-        await self.command_queue.put(Start(name))
-        await self.command_queue.put(Stop(name))
+    async def restart(self, name: str,  instance_ids: list[int]):
+        #TODO - Implement restart with instance_ids
+        await self.command_queue.put(Start(name, instance_ids))
+        await self.command_queue.put(Stop(name, instance_ids))
 
     async def reload(self):
         await self.command_queue.put(Reload())
@@ -91,16 +91,18 @@ class TaskMaster:
                     command: Start
                     t = self.task(command.task)
                     if t is not None:
-                        # TODO: Give the correct replica
-                        await t.command_queue.put(task.Start(1))
+                        instance_ids = command.instance_ids if len(command.instance_ids) != 0 else list(range(1, t.desc.replicas + 1))
+                        for instance_id in instance_ids:
+                            await t.command_queue.put(task.Start(instance_id))
                     else:
                         self.logger.warn(f'Unknown "{command.task}"')
                 case Stop():
                     command: Stop
                     t = self.task(command.task)
                     if t is not None:
-                        # TODO: Give the correct replica
-                        await t.command_queue.put(task.Stop(1))
+                        instance_ids = command.instance_ids if len(command.instance_ids) != 0 else list(range(1, t.desc.replicas + 1))
+                        for instance_id in instance_ids:
+                            await t.command_queue.put(task.Stop(instance_id))
                     else:
                         self.logger.warn(f'Unknown task "{command.task}"')
                         continue
