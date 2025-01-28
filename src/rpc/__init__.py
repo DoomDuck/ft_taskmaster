@@ -30,8 +30,8 @@ class Client:
             map(lambda target: target.name, self.stub.list(Empty()))
         )
 
-    def status(self, task: str) -> str:
-        return self.stub.status(Target(name=task)).status
+    def status(self, task: str, intances: List[int]) -> str:
+        return self.stub.status(Target(name=task, instances=intances)).status
 
     def reload(self):
         self.stub.reload(Empty())
@@ -66,8 +66,24 @@ class TaskMasterRunner(RunnerServicer):
         return Empty()
 
     async def status(self, target: Target, _context) -> TaskStatus:
-        # TODO: Return status
-        return NotImplemented
+        messages = []
+        task = self.task_master.task(target.name)
+        if task is None:
+            return TaskStatus(status=f"unknown task {target.name}")
+
+        to_report = target.instances
+        if len(to_report) == 0:
+            to_report = range(1, len(task.instances) + 1)
+
+        for id in to_report:
+            instance = task.instance(id)
+            if instance is None:
+                messages.append(f"{id}: inexistent")
+            else:
+                messages.append(f"{id}: {instance.stage}")
+
+        return TaskStatus(status=", ".join(messages))
+
 
     async def list(
         self, _arg: Empty, _context

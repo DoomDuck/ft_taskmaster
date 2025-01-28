@@ -91,7 +91,7 @@ def run(client: rpc.Client):
                         client.restart(task,  list(map(int, instance_ids)))
                     case ["status", task, *instance_ids]:
                         status = client.status(task,  list(map(int, instance_ids)))
-                        print(f"Task is {status}")
+                        print(f"Status:\n\t{status}")
                     case ["list"]:
                         for task in client.list():
                             print(task)
