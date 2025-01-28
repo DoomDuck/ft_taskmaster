@@ -16,11 +16,11 @@ class Client:
         self.channel = grpc.insecure_channel(f"{address}:{port}")
         self.stub = RunnerStub(self.channel)
 
-    def start(self, task: str, instance_ids: List[int] = []):
-        self.stub.start(Target(name=task, instance_id=instance_ids))
+    def start(self, task: str, instances: List[int] = []):
+        self.stub.start(Target(name=task, instances=instances))
 
-    def stop(self, task: str,  instance_ids: List[int] = [] ):
-        self.stub.stop(Target(name=task, instance_id=instance_ids))
+    def stop(self, task: str,  instances: List[int] = []):
+        self.stub.stop(Target(name=task, instances=instances))
 
     def restart(self, task: str):
         self.stub.restart(Target(name=task))
@@ -54,15 +54,15 @@ class TaskMasterRunner(RunnerServicer):
         self.task_master = task_master
 
     async def start(self, target: Target, _context) -> Empty:
-        await self.task_master.start(target.name, target.instance_id)
+        await self.task_master.start(target.name, target.instances)
         return Empty()
 
     async def stop(self, target: Target, _context) -> Empty:
-        await self.task_master.stop(target.name, target.instance_id)
+        await self.task_master.stop(target.name, target.instances)
         return Empty()
 
     async def restart(self, target: Target, _context) -> Empty:
-        await self.task_master.restart(target.name, target.instance_id)
+        await self.task_master.restart(target.name, target.instances)
         return Empty()
 
     async def status(self, target: Target, _context) -> TaskStatus:
