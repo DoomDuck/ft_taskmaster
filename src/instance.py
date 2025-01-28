@@ -103,11 +103,8 @@ class StageWithProcess(Stage):
         self.process = process
 
     def stop(self):
-        signal = self.desc.shutdown_signal
-        if signal is None:
-            signal = Signals.SIGTERM
         try:
-            self.process.send_signal(signal)
+            self.process.send_signal(self.desc.shutdown_signal)
         except ProcessLookupError:
             pass
 

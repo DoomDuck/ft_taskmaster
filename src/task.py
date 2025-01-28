@@ -128,9 +128,12 @@ class Task:
                                 instance.shutdown()
 
                             if len(to_stop) != 0:
-                                await asyncio.wait(to_stop)
+                                await asyncio.wait(instance_runs[
+                                    command.desc.replicas: self.desc.replicas
+                                ])
 
                             self.update_description(command.desc)
+                            self.desc = command.desc
 
                             while len(self.instances) < self.desc.replicas:
                                 instance = self.add_instance()

@@ -54,7 +54,7 @@ class TaskDescription:
     success_exit_codes: set[int]
     start_timeout: timedelta
     start_attempts: int
-    shutdown_signal: Optional[Signals]
+    shutdown_signal: Signals
     shutdown_timeout: timedelta
     stdout: Optional[str]
     stderr: Optional[str]
@@ -91,7 +91,7 @@ class TaskDescription:
             success_exit_codes=set(d.get("success_exit_codes", [0])),
             start_timeout=timedelta(seconds=d.get("start_timeout", 3)),
             start_attempts=d.get("start_attempts", 3),
-            shutdown_signal=Signals[d.get("shutdown_signal", "SIGINT")],
+            shutdown_signal=Signals[d.get("shutdown_signal", "SIGTERM")],
             shutdown_timeout=timedelta(seconds=d.get("shutdown_timeout", 10)),
             stdout=d.get("stdout"),
             stderr=d.get("stderr"),
