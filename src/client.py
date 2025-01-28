@@ -4,7 +4,11 @@ import rpc
 import grpc
 import readline
 import platform
+import os
 from typing import List
+
+
+
 HISTORY_FILE  = ".taskmaster_history"
 
 class Colors:
@@ -29,6 +33,33 @@ commands = [
 
 def printError(message: str, arg: [str] = ""):
     print(f"{Colors.RED}{message} {arg}{Colors.RESET}")
+    
+def get_history_items():
+    return [ readline.get_history_item(i)
+             for i in range(1, readline.get_current_history_length() + 1)
+             ]
+
+class HistoryCompleter(object):
+    
+    def __init__(self):
+        self.matches = []
+        return
+
+    def complete(self, text, state):
+        response = None
+        if state == 0:
+            history_values = get_history_items()
+            if text:
+                self.matches = sorted(
+                    h for h in history_values
+                        if h and h.startswith(text))
+            else:
+                self.matches = []
+        try:
+            response = self.matches[state]
+        except IndexError:
+            response = None
+        return response
 
 class CompletionEngine:
     client: rpc.Client
@@ -70,16 +101,14 @@ class CompletionEngine:
 
 def run(client: rpc.Client):
     setup(client)
-
+    if os.path.exists(HISTORY_FILE):
+        readline.read_history_file(HISTORY_FILE)
     while True:
+        
         try:
             command_line = input(
-                Colors.YELLOW + "🔧 Taskmaster\n   ⤷ " + Colors.RESET,
+           "🔧 Taskmaster  ❯ ",
             )
-
-            if not command_line:
-                continue
-
             try:
                 tokens = command_line.split()
                 match tokens:
@@ -111,8 +140,9 @@ def run(client: rpc.Client):
         except (KeyboardInterrupt, EOFError):
             print("\nExiting Taskmaster.")
             break
-
     readline.write_history_file(HISTORY_FILE)
+    readline.set_completer(HistoryCompleter().complete)
+
 
 def setup(client: rpc.Client):
     try:

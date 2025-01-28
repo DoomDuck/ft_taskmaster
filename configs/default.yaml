@@ -9,7 +9,7 @@ tasks:
         start_timeout: 3
 
     sleep:
-        command: "sleep 30"
+        command: "sleep 300"
         replicas: 3
         start_on_launch: true
         restart: "on_failure"
