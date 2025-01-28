@@ -9,8 +9,8 @@ tasks:
         start_timeout: 3
 
     sleep:
-        command: "sleep infinity"
-        replicas: 1
+        command: "sleep 30"
+        replicas: 3
         start_on_launch: true
         restart: "on_failure"
         success_exit_codes: [0, 1]
