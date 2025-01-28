@@ -102,7 +102,7 @@ class TaskMaster:
                     if t is not None:
                         if len(command.instances) == 0:
                             command.instances = list(range(1, t.desc.replicas + 1))
-                        for instance_id in ids:
+                        for instance_id in command.instances :
                             await t.command_queue.put(task.Stop(instance_id))
                     else:
                         self.logger.warn(f'Unknown task "{command.task}"')
