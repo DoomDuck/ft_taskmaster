@@ -103,11 +103,18 @@ class TaskMaster:
                         await t.command_queue.put(task.Stop(1))
                     else:
                         self.logger.warn(f'Unknown task "{command.task}"')
+                        continue
 
                 case Reload():
                     command: Reload
                     self.logger.info("Reloading")
-                    new_configuration = Configuration.load(self.config_file)
+
+                    try:
+                        new_configuration = Configuration.load(self.config_file)
+                    except Exception as e:
+                        self.logger.error(f"skipping update, could not load config: {e}")
+                        continue
+
 
                     previous_tasks = set(configuration.tasks.keys())
                     new_tasks = set(new_configuration.tasks.keys())
