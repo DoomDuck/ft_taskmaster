@@ -47,7 +47,7 @@ Example of what to do is [supervisor](http://supervisord.org)
     - That can be hot reloaded on SIGHUP
         - Then stear process pool to correct state
             - Kill *unnecessary* processes
-            - Start newly required programs #FIXME -  not started when replicas is added 
+            - Start newly required programs
 - Have logging system outputing to local file
     - Program start
     - Program stop
