@@ -91,11 +91,11 @@ async def start(arguments: Namespace):
     def on_sigint():
         event_loop.create_task(task_master.shutdown())
 
-    def on_sigusr1():
+    def on_sighup():
         event_loop.create_task(task_master.reload())
 
     event_loop.add_signal_handler(Signals.SIGINT, on_sigint)
-    event_loop.add_signal_handler(Signals.SIGUSR1, on_sigusr1)
+    event_loop.add_signal_handler(Signals.SIGHUP, on_sighup)
 
     rpc_server = rpc.Server(task_master)
 
