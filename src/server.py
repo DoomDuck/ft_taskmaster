@@ -41,7 +41,7 @@ cla.add_argument(
     "-L",
     "--log-level",
     type=str,
-    choices=logging.getLevelNamesMapping().keys(),
+    choices=["DEBUG", "INFO", "WARN", "ERROR"],
     help="log level",
     default="INFO",
 )

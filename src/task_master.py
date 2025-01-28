@@ -51,8 +51,8 @@ class TaskMaster:
         await self.command_queue.put(Stop(name, instances))
 
     async def restart(self, name: str,  instances: List[int]):
-        await self.command_queue.put(Start(name, instances))
         await self.command_queue.put(Stop(name, instances))
+        await self.command_queue.put(Start(name, instances))
 
     async def reload(self):
         await self.command_queue.put(Reload())

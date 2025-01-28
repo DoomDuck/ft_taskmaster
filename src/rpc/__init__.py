@@ -22,8 +22,8 @@ class Client:
     def stop(self, task: str,  instances: List[int] = []):
         self.stub.stop(Target(name=task, instances=instances))
 
-    def restart(self, task: str):
-        self.stub.restart(Target(name=task))
+    def restart(self, task: str, instances: List[int] = []):
+        self.stub.restart(Target(name=task, instances=instances))
 
     def list(self) -> List[str]:
         return list(
