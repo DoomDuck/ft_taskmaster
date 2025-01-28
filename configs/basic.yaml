@@ -4,4 +4,4 @@ tasks:
       command: "sleep infinity"
     hello:
       command: "echo hello"
-      replicas: 1
+      replicas: 3
