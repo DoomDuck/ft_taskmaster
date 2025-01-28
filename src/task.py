@@ -23,13 +23,16 @@ class Update(Command):
 
 @dataclass
 class Start(Command):
-    replica: int
+    instance: int
 
 
 @dataclass
 class Stop(Command):
-    replica: int
+    instance: int
 
+@dataclass
+class Restart(Command):
+    instance: int
 
 class Task:
     logger: Logger
@@ -67,10 +70,10 @@ class Task:
         for instance in self.instances:
             instance.update_description(desc)
 
-    def instance(self, replica: int) -> Optional[Instance]:
-        if 1 <= replica <= len(self.instances):
-            return self.instances[replica - 1]
-        self.logger.warn(f"Unknown replica {replica}")
+    def instance(self, instance: int) -> Optional[Instance]:
+        if 1 <= instance <= len(self.instances):
+            return self.instances[instance - 1]
+        self.logger.warn(f"Unknown instance {instance}")
         return None
 
     def requires_restart(self, desc: TaskDescription) -> bool:
@@ -94,14 +97,32 @@ class Task:
                 match command:
                     case Start():
                         command: Start
-                        instance = self.instance(command.replica)
+                        instance = self.instance(command.instance)
                         if instance is not None:
                             instance.start()
                     case Stop():
                         command: Stop
-                        instance = self.instance(command.replica)
+                        instance = self.instance(command.instance)
                         if instance is not None:
                             instance.stop()
+                    case Restart():
+                        command: Restart
+                        instance = self.instance(command.instance)
+                        if instance is None:
+                            continue
+
+                        instance.shutdown()
+
+                        index = command.instance - 1
+                        await instance_runs[index]
+                        logger = logging.getLogger(f"{self.logger.name}:{command.instance}")
+                        new_instance = Instance(self.desc, logger)
+                        self.instances[index] = new_instance
+
+                        instance_runs[command.instance] = asyncio.create_task(
+                            new_instance.run()
+                        )
+
                     case Update():
                         command: Update
                         self.logger.debug("updating description")
@@ -134,6 +155,7 @@ class Task:
 
                             while command.desc.replicas < len(self.instances):
                                 self.instances.pop()
+
 
                             self.update_description(command.desc)
                             self.desc = command.desc
