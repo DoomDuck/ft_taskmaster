@@ -132,6 +132,9 @@ class Task:
                                     command.desc.replicas: self.desc.replicas
                                 ])
 
+                            while command.desc.replicas < len(self.instances):
+                                self.instances.pop()
+
                             self.update_description(command.desc)
                             self.desc = command.desc
 
