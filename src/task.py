@@ -119,7 +119,7 @@ class Task:
                         new_instance = Instance(self.desc, logger)
                         self.instances[index] = new_instance
 
-                        instance_runs[command.instance] = asyncio.create_task(
+                        instance_runs[index] = asyncio.create_task(
                             new_instance.run()
                         )
 
