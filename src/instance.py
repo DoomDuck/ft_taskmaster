@@ -9,7 +9,7 @@ from signal import Signals
 from datetime import datetime
 from config import TaskDescription, RestartCondition
 from abc import ABC, abstractmethod
-from asyncio.subprocess import Process, create_subprocess_shell
+from asyncio.subprocess import Process, create_subprocess_exec
 
 
 async def create_subprocess(desc: TaskDescription) -> Process:
@@ -41,7 +41,9 @@ async def create_subprocess(desc: TaskDescription) -> Process:
 
         raise
 
-    return await create_subprocess_shell(desc.command, **arguments)
+    return await create_subprocess_exec(
+        "/bin/bash", "-c", desc.command, **arguments
+    )
 
 
 class Stage(ABC):

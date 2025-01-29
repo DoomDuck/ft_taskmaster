@@ -1,0 +1,4 @@
+tasks:
+  ping:
+    command: "ping localhost"
+    shutdown_signal: "SIGINT"
